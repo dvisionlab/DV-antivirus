@@ -1,3 +1,4 @@
+import subprocess
 from lungmask import mask
 import SimpleITK as sitk
 import os
@@ -61,13 +62,20 @@ def organize_series(files, data_directory):
 def do_prediction(input_image):
     # Run segmentation
     print('Running segmentation...')
-    segmentation = mask.apply(input_image)
+    segmentation = mask.apply(input_image, force_cpu=True)
     # free memory
     torch.cuda.empty_cache()
 
     # Convert to itk image
     # isVector=True to get a 2D vector image instead of 3D image
     out_img = sitk.GetImageFromArray(segmentation)
+
+    spacing = input_image.GetSpacing()
+    direction = input_image.GetDirection()
+    origin = input_image.GetOrigin()
+    out_img.SetSpacing(spacing)
+    out_img.SetDirection(direction)
+    out_img.SetOrigin(origin)
 
     # Write output
     print('Writing output...')
@@ -125,6 +133,23 @@ def readImage(series_folder):
     return input_image
 
 
+def dicom2nrrd(dcm_path, nrrd_path):
+    print('Dicom to nrrd...')
+    image = readImage(dcm_path)
+    # HACK force z spacing to 1.0
+    sp = image.GetSpacing()
+    sp = (sp[0], sp[1], 1.0)
+    image.SetSpacing(sp)
+    img_basename = os.path.basename(dcm_path)
+    sitk.WriteImage(image, nrrd_path)
+
+
+def register(image_fixed, image_move, folder_out):
+    print('Run registration...')
+    subprocess.call("./runRegistration.sh -f %s -m %s -o %s" %
+                    (image_fixed, image_move, folder_out), shell=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Extract lung values from given images and store output in target csv file')
@@ -145,17 +170,26 @@ if __name__ == "__main__":
     if (not args.dicomdir_fixed):
         sys.exit("Please provide dicom series directory")
 
-    # TODO registration !
     path_fixed = args.dicomdir_fixed
     path_move = args.dicomdir_move
-    image_fixed = readImage(path_fixed)
-    image_move = readImage(path_move)
+    temp_path = os.path.join(os.getcwd(), "./temp/")
+    os.makedirs(temp_path, exist_ok=True)
+    nrrd_fixed = os.path.join(temp_path, 'fixed.nrrd')
+    nrrd_moving = os.path.join(temp_path, 'moving.nrrd')
+    nrrd_moved = os.path.join(temp_path, 'result.nrrd')
+    dicom2nrrd(path_fixed, nrrd_fixed)
+    dicom2nrrd(path_move, nrrd_moving)
+    register(nrrd_fixed, nrrd_moving, temp_path)
+
+    image_senzamdc = sitk.ReadImage(nrrd_fixed)
+    image_conmdc = sitk.ReadImage(nrrd_moved)
+
     if (args.use_mask):
         mask = sitk.ReadImage(args.use_mask)
         segmentation_arr = sitk.GetArrayFromImage(mask)
     else:
-        segmentation_arr = do_prediction(image_fixed)
+        segmentation_arr = do_prediction(image_senzamdc)
     # pseudo_mask = generatePseudoMask(image_fixed, segmentation_arr)
     # pseudo_mask = generatePseudoMask(image_move, segmentation_arr)
-    generateCSV(image_fixed, image_move, segmentation_arr, args.outfile)
+    generateCSV(image_senzamdc, image_conmdc, segmentation_arr, args.outfile)
     print('DONE', args.outfile)
