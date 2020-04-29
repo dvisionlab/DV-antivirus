@@ -59,10 +59,10 @@ def organize_series(files, data_directory):
             moveIntoFolder(f, description, './DICOM/')
 
 
-def do_prediction(input_image):
+def do_prediction(input_image, force_cpu):
     # Run segmentation
     print('Running segmentation...')
-    segmentation = mask.apply(input_image, force_cpu=True)
+    segmentation = mask.apply(input_image, force_cpu=force_cpu)
     # free memory
     torch.cuda.empty_cache()
 
@@ -151,8 +151,13 @@ def register(image_fixed, image_move, folder_out):
 
 
 if __name__ == "__main__":
+    # init arg parser
+
     parser = argparse.ArgumentParser(
         description='Extract lung values from given images and store output in target csv file')
+
+    parser.add_argument('--force_cpu', action='store_true',
+                        help='force using cpu for segmentation')
 
     parser.add_argument('--use_mask', action='store',
                         help='use passed mask instead of running segmentation (intended for dev)')
@@ -160,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument('--dicomdir_fixed', action='store',
                         default=None, help='the dicom folder of target image')
 
-    parser.add_argument('--dicomdir_move', action='store',
+    parser.add_argument('--dicomdir_moving', action='store',
                         default=None, help='the dicom folder of source image')
 
     parser.add_argument('--outfile', action='store',
@@ -169,27 +174,43 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if (not args.dicomdir_fixed):
         sys.exit("Please provide dicom series directory")
+    if (not args.dicomdir_moving):
+        sys.exit("Please provide dicom series directory")
 
     path_fixed = args.dicomdir_fixed
-    path_move = args.dicomdir_move
+    path_moving = args.dicomdir_moving
+
+    # create temp folder
     temp_path = os.path.join(os.getcwd(), "./temp/")
     os.makedirs(temp_path, exist_ok=True)
+
+    # create path to temp files
     nrrd_fixed = os.path.join(temp_path, 'fixed.nrrd')
     nrrd_moving = os.path.join(temp_path, 'moving.nrrd')
     nrrd_moved = os.path.join(temp_path, 'result.nrrd')
+
+    # convert input dicom to nrrd
     dicom2nrrd(path_fixed, nrrd_fixed)
-    dicom2nrrd(path_move, nrrd_moving)
+    dicom2nrrd(path_moving, nrrd_moving)
+
+    # register moving nrrd on fixed nrrd
     register(nrrd_fixed, nrrd_moving, temp_path)
 
+    # read registration results
     image_senzamdc = sitk.ReadImage(nrrd_fixed)
     image_conmdc = sitk.ReadImage(nrrd_moved)
 
+    # run segmentation (or load a mask)
     if (args.use_mask):
         mask = sitk.ReadImage(args.use_mask)
         segmentation_arr = sitk.GetArrayFromImage(mask)
     else:
-        segmentation_arr = do_prediction(image_senzamdc)
+        segmentation_arr = do_prediction(image_senzamdc, args.force_cpu)
+
+    # write pseudo-mask (for dev)
     # pseudo_mask = generatePseudoMask(image_fixed, segmentation_arr)
     # pseudo_mask = generatePseudoMask(image_move, segmentation_arr)
+
+    # generate csv file
     generateCSV(image_senzamdc, image_conmdc, segmentation_arr, args.outfile)
     print('DONE', args.outfile)

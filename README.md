@@ -13,3 +13,6 @@ Extract in root folder.
 Create params folder inside elastix folder and place .txt files there.
 
 Run `python run.py` 
+
+## Extras
+The `organize_series` function organize a study folder in series subfolders.
