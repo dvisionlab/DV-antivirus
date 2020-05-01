@@ -64,13 +64,14 @@ def generateCSV(image_f, image_m, mask, filepath):
     with open(filepath, mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['i', 'j', 'k', 'valore senza mdc', 'valore con mdc'])
+        writer.writerow(['i', 'j', 'k', 'valore senza mdc',
+                         'valore con mdc', 'polmone'])
         for k in range(mask.shape[0]):
             for j in range(mask.shape[1]):
                 for i in range(mask.shape[2]):
-                    if mask[k][j][i]:
+                    if (mask[k][j][i] > 0):
                         writer.writerow(
-                            [i, j, k, image_f.GetPixel(i, j, k), image_m.GetPixel(i, j, k)])
+                            [i, j, k, image_f.GetPixel(i, j, k), image_m.GetPixel(i, j, k), mask[k][j][i]])
 
 
 def readImage(series_folder):
