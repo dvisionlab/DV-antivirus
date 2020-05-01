@@ -8,55 +8,7 @@ import torch
 import argparse
 import sys
 
-
-def moveIntoFolder(f, name, wdir):
-    name = name.strip()
-    name = name.replace(" ", "_")
-    name = name.replace(",", "_")
-    name = name.replace(".", "_")
-    dest_folder = os.path.join(wdir, name)
-    wdir_path = os.path.join(wdir, f)
-    dest_path = os.path.join(dest_folder, f)
-    os.makedirs(dest_folder, exist_ok=True)
-    print(wdir_path, ' >> ', dest_path)
-    os.rename(wdir_path, dest_path)
-
-
-def getImageSeriesId(file_name, series_list):
-    print('Reading image...')
-    # A file name that belongs to the series we want to read
-
-    # Read the file's meta-information without reading bulk pixel data
-    # print('Reading image...')
-    file_reader = sitk.ImageFileReader()
-    file_reader.SetFileName(file_name)
-    file_reader.ReadImageInformation()
-
-    # Get the sorted file names, opens all files in the directory and reads the meta-information
-    # without reading the bulk pixel data
-    series_ID = file_reader.GetMetaData('0020|000e')
-    description = file_reader.GetMetaData('0008|103e')
-    print('seriesId', series_ID)
-    print('description', description)
-
-    if series_ID not in series_list:
-        series_list.append((series_ID, description))
-
-    return series_ID
-
-
-def organize_series(files, data_directory):
-    series_list = []
-
-    for file in files:
-        getImageSeriesId(file, series_list)
-
-    for (series_ID, description) in series_list:
-        sorted_file_names = sitk.ImageSeriesReader.GetGDCMSeriesFileNames(
-            data_directory, series_ID)
-        for file_path in sorted_file_names:
-            f = os.path.basename(file_path)
-            moveIntoFolder(f, description, './DICOM/')
+from utils import getImageSeriesId
 
 
 def do_prediction(input_image, force_cpu):
@@ -123,7 +75,7 @@ def generateCSV(image_f, image_m, mask, filepath):
 
 def readImage(series_folder):
     for (root, dirs, files) in os.walk(series_folder):
-        series_id = getImageSeriesId(os.path.join(root, files[0]), [])
+        series_id = getImageSeriesId(os.path.join(root, files[0]), [], [])
 
     sorted_file_names = sitk.ImageSeriesReader.GetGDCMSeriesFileNames(
         series_folder, series_id)
@@ -137,9 +89,9 @@ def dicom2nrrd(dcm_path, nrrd_path):
     print('Dicom to nrrd...')
     image = readImage(dcm_path)
     # HACK force z spacing to 1.0
-    sp = image.GetSpacing()
-    sp = (sp[0], sp[1], 1.0)
-    image.SetSpacing(sp)
+    # sp = image.GetSpacing()
+    # sp = (sp[0], sp[1], 1.0)
+    # image.SetSpacing(sp)
     img_basename = os.path.basename(dcm_path)
     sitk.WriteImage(image, nrrd_path)
 
@@ -212,5 +164,7 @@ if __name__ == "__main__":
     # pseudo_mask = generatePseudoMask(image_move, segmentation_arr)
 
     # generate csv file
-    generateCSV(image_senzamdc, image_conmdc, segmentation_arr, args.outfile)
+    generateCSV(
+        image_senzamdc, image_conmdc, segmentation_arr, args.outfile)
+
     print('DONE', args.outfile)
