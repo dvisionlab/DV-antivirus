@@ -58,20 +58,77 @@ def generatePseudoMask(image, mask):
     return out_img
 
 
-def generateCSV(image_f, image_m, mask, filepath):
+def extractValuesInsidePalette(image, mask):
+    t1_low = -983
+    t2_low = -860
+    t1_high = -860
+    t2_high = -740
+
+    image_arr = sitk.GetArrayFromImage(image)
+
+    print('clean segmentation')
+    # mask[image < t1_low & image > t2_high] = 0
+
+    # # Generate a mask that is 1 in the lower perfusion
+    # # zone and 1 in the higher (0 in background)
+    # perfusion_mask = mask
+    # perfusion_mask[image > t1_low & image < t2_low] = 1
+    # perfusion_mask[image > t1_high & image < t2_high] = 2
+
+    pxs = mask.shape[0]*mask.shape[1]*mask.shape[2]
+
+    perfusion_mask = mask
+
+    for k in range(mask.shape[0]):
+        print('cleaning', k, ' // ', mask.shape[0])
+        for j in range(mask.shape[1]):
+            for i in range(mask.shape[2]):
+                if (mask[k][j][i] == 0):
+                    continue
+                elif (mask[k][j][i] > 0 and image_arr[k][j][i] < t1_low):
+                    perfusion_mask[k][j][i] = 0
+                elif (mask[k][j][i] > 0 and image_arr[k][j][i] <= t2_low):
+                    perfusion_mask[k][j][i] = 10
+                elif (mask[k][j][i] > 0 and image_arr[k][j][i] <= t2_high):
+                    perfusion_mask[k][j][i] = 20
+                elif (mask[k][j][i] > 0 and image_arr[k][j][i] > t2_high):
+                    perfusion_mask[k][j][i] = 0
+
+    # Convert to itk image
+    out_img = sitk.GetImageFromArray(mask)
+
+    spacing = image.GetSpacing()
+    direction = image.GetDirection()
+    origin = image.GetOrigin()
+    out_img.SetSpacing(spacing)
+    out_img.SetDirection(direction)
+    out_img.SetOrigin(origin)
+
+    # Write output
+    print('Writing output cleaned...')
+    sitk.WriteImage(out_img, 'lung_mask_palette.nrrd')
+
+    return mask
+
+
+def generateCSV(image_f, image_m, lung_mask, perfusion_mask, folder_path):
     print('Writing csv...')
 
-    with open(filepath, mode='w+') as csv_file:
+    file_path = os.path.join(folder_path, 'output.csv')
+    with open(file_path, mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['i', 'j', 'k', 'valore senza mdc',
-                         'valore con mdc', 'polmone'])
-        for k in range(mask.shape[0]):
-            for j in range(mask.shape[1]):
-                for i in range(mask.shape[2]):
-                    if (mask[k][j][i] > 0):
+                         'valore con mdc', 'polmone', 'perfusion'])
+        for k in range(lung_mask.shape[0]):
+            print('writing csv', k, ' // ', lung_mask.shape[0])
+            for j in range(lung_mask.shape[1]):
+                for i in range(lung_mask.shape[2]):
+                    f_pix = image_f.GetPixel(i, j, k)
+                    m_pix = image_m.GetPixel(i, j, k)
+                    if (lung_mask[k][j][i] > 0):
                         writer.writerow(
-                            [i, j, k, image_f.GetPixel(i, j, k), image_m.GetPixel(i, j, k), mask[k][j][i]])
+                            [i, j, k, image_f.GetPixel(i, j, k), image_m.GetPixel(i, j, k), lung_mask[k][j][i], perfusion_mask[k][j][i]])
 
 
 def readImage(series_folder):
@@ -121,8 +178,8 @@ if __name__ == "__main__":
     parser.add_argument('--dicomdir_moving', action='store',
                         default=None, help='the dicom folder of source image')
 
-    parser.add_argument('--outfile', action='store',
-                        default="./output.csv", help='the output csv file')
+    parser.add_argument('--outfolder', action='store',
+                        default="output/", help='the output folder')
 
     args = parser.parse_args()
     if (not args.dicomdir_fixed):
@@ -134,7 +191,7 @@ if __name__ == "__main__":
     path_moving = args.dicomdir_moving
 
     # create temp folder
-    temp_path = os.path.join(os.getcwd(), "./temp/")
+    temp_path = os.path.join(os.getcwd(), "temp/")
     os.makedirs(temp_path, exist_ok=True)
 
     # create path to temp files
@@ -160,12 +217,16 @@ if __name__ == "__main__":
     else:
         segmentation_arr = do_prediction(image_senzamdc, args.force_cpu)
 
+    # extract only values inside the target palette
+    segmentation_arr_cleaned = extractValuesInsidePalette(
+        image_conmdc, segmentation_arr)
+
     # write pseudo-mask (for dev)
     # pseudo_mask = generatePseudoMask(image_fixed, segmentation_arr)
     # pseudo_mask = generatePseudoMask(image_move, segmentation_arr)
 
     # generate csv file
     generateCSV(
-        image_senzamdc, image_conmdc, segmentation_arr, args.outfile)
+        image_senzamdc, image_conmdc, segmentation_arr, segmentation_arr_cleaned, args.outfolder)
 
-    print('DONE', args.outfile)
+    print('DONE, output in:', args.outfolder)
