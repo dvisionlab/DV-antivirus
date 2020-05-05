@@ -40,7 +40,7 @@ def do_prediction(input_image, force_cpu):
 # low/high (10 or 20)
 
 
-def maskToCSV(mask, image_f, image_m, folder_path):
+def maskToCSV(mask, image, folder_path):
     t1_low = -983
     t2_low = -870
     t1_high = -870
@@ -56,36 +56,34 @@ def maskToCSV(mask, image_f, image_m, folder_path):
     with open(file_path, mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['valore senza mdc',
-                         'valore con mdc', 'polmone', 'perfusion'])
+        writer.writerow(['valore con mdc', 'polmone', 'perfusion'])
 
         for k in range(mask.shape[0]):
             print('>>', k, ' // ', mask.shape[0])
             for j in range(mask.shape[1]):
                 for i in range(mask.shape[2]):
-                    f_pix = image_f.GetPixel(i, j, k)
-                    m_pix = image_m.GetPixel(i, j, k)
+                    pix = image.GetPixel(i, j, k)
                     if (mask[k][j][i] == 0):
                         continue
-                    elif (mask[k][j][i] > 0 and m_pix < t1_low):
+                    elif (mask[k][j][i] > 0 and pix < t1_low):
                         perfusion_mask[k][j][i] = 0
-                    elif (mask[k][j][i] > 0 and m_pix <= t2_low):
+                    elif (mask[k][j][i] > 0 and pix <= t2_low):
                         perfusion_mask[k][j][i] = 10
                         writer.writerow(
-                            [f_pix, m_pix, mask[k][j][i], perfusion_mask[k][j][i]])
-                    elif (mask[k][j][i] > 0 and m_pix <= t2_high):
+                            [pix, mask[k][j][i], perfusion_mask[k][j][i]])
+                    elif (mask[k][j][i] > 0 and pix <= t2_high):
                         perfusion_mask[k][j][i] = 20
                         writer.writerow(
-                            [f_pix, m_pix, mask[k][j][i], perfusion_mask[k][j][i]])
-                    elif (mask[k][j][i] > 0 and m_pix > t2_high):
+                            [pix, mask[k][j][i], perfusion_mask[k][j][i]])
+                    elif (mask[k][j][i] > 0 and pix > t2_high):
                         perfusion_mask[k][j][i] = 0
 
     # Convert to itk image
     out_img = sitk.GetImageFromArray(mask)
 
-    spacing = image_m.GetSpacing()
-    direction = image_m.GetDirection()
-    origin = image_m.GetOrigin()
+    spacing = image.GetSpacing()
+    direction = image.GetDirection()
+    origin = image.GetOrigin()
     out_img.SetSpacing(spacing)
     out_img.SetDirection(direction)
     out_img.SetOrigin(origin)
