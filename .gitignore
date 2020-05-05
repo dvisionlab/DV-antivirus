@@ -1,0 +1,5 @@
+# nrrd files
+*.nrrd
+
+# temp files
+/temp/*
