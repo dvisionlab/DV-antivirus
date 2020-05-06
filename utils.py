@@ -147,6 +147,7 @@ def moveIntoFolder(f, name, wdir):
     name = name.replace(" ", "_")
     name = name.replace(",", "_")
     name = name.replace(".", "_")
+    name = name.replace("/", "_")
     dest_folder = os.path.join(wdir, name)
     wdir_path = os.path.join(wdir, f)
     dest_path = os.path.join(dest_folder, f)

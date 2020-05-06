@@ -79,7 +79,7 @@ def maskToCSV(mask, image, folder_path):
                         perfusion_mask[k][j][i] = 0
 
     # Convert to itk image
-    out_img = sitk.GetImageFromArray(mask)
+    out_img = sitk.GetImageFromArray(perfusion_mask)
 
     spacing = image.GetSpacing()
     direction = image.GetDirection()
