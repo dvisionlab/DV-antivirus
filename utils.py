@@ -4,7 +4,7 @@ import csv
 import numpy as np
 import argparse
 import os
-# import SimpleITK as sitk
+import SimpleITK as sitk
 import zipfile36 as zipfile
 
 # Images w CM
@@ -147,6 +147,7 @@ def moveIntoFolder(f, name, wdir):
     name = name.replace(" ", "_")
     name = name.replace(",", "_")
     name = name.replace(".", "_")
+    name = name.replace("/", "_")
     dest_folder = os.path.join(wdir, name)
     wdir_path = os.path.join(wdir, f)
     dest_path = os.path.join(dest_folder, f)
