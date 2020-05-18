@@ -1,0 +1,9 @@
+# nrrd files
+*.nrrd
+
+# png and csv
+*.png
+*.csv
+
+# temp files
+/temp/*

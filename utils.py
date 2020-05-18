@@ -4,8 +4,8 @@ import csv
 import numpy as np
 import argparse
 import os
-# import SimpleITK as sitk
-# import zipfile36 as zipfile
+import SimpleITK as sitk
+import zipfile36 as zipfile
 
 # Images w CM
 
