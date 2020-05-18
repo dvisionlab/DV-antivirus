@@ -5,7 +5,7 @@ import numpy as np
 import argparse
 import os
 # import SimpleITK as sitk
-import zipfile36 as zipfile
+# import zipfile36 as zipfile
 
 # Images w CM
 
@@ -41,19 +41,7 @@ def examine(csv_path):
     # select mdc column
     left_data_mdc = left_data['valore_con_mdc']
     right_data_mdc = right_data['valore_con_mdc']
-    # select data inside the thresholds
-    # t1_low = -983
-    # t2_low = -860
-    # t1_high = -860
-    # t2_high = -740
-    # left_data_low = left_data_mdc[(
-    #     t1_low <= left_data_mdc) & (left_data_mdc < t2_low)]
-    # right_data_low = right_data_mdc[(
-    #     t1_low <= right_data_mdc) & (right_data_mdc < t2_low)]
-    # left_data_high = left_data_mdc[(
-    #     t1_high <= left_data_mdc) & (left_data_mdc < t2_high)]
-    # right_data_high = right_data_mdc[(
-    #     t1_high <= right_data_mdc) & (right_data_mdc < t2_high)]
+
     # compute ratio on total volume
     left_ratio = len(left_data_low)/(len(left_data_low)+len(left_data_high))
     right_ratio = len(right_data_low) / \
@@ -113,6 +101,99 @@ def examine(csv_path):
             writer.writerow([bins[n], int(nl[n]), int(nr[n])])
 
 
+def examine_treshold(csv_path, thresholds):
+    print('Loading data...')
+    data = np.genfromtxt(csv_path, delimiter=';', dtype=int, names=True)
+    print('Data loaded.')
+    # define which is left/right
+    left_data = data[data['polmone'] == 1]
+    right_data = data[data['polmone'] == 2]
+    print('LEFT LUNG\tRIGHT LUNG')
+    print(len(left_data), '\t', len(right_data))
+
+    # select mdc column
+    left_data_mdc = left_data['valore_con_mdc']
+    right_data_mdc = right_data['valore_con_mdc']
+    # select data inside the thresholds
+    t1_low = thresholds[0]
+    t2_low = thresholds[1]
+    t1_high = thresholds[1]
+    t2_high = thresholds[2]
+    left_data_low = left_data_mdc[(
+        t1_low <= left_data_mdc) & (left_data_mdc < t2_low)]
+    right_data_low = right_data_mdc[(
+        t1_low <= right_data_mdc) & (right_data_mdc < t2_low)]
+    left_data_high = left_data_mdc[(
+        t1_high <= left_data_mdc) & (left_data_mdc < t2_high)]
+    right_data_high = right_data_mdc[(
+        t1_high <= right_data_mdc) & (right_data_mdc < t2_high)]
+
+    print(len(left_data_low), '\t', len(left_data_high))
+    print(len(right_data_low), '\t', len(right_data_high))
+
+    print(left_data_low)
+
+    # compute ratio on total volume
+    left_ratio = len(left_data_low)/(len(left_data_low)+len(left_data_high))
+    right_ratio = len(right_data_low) / \
+        (len(right_data_low)+len(right_data_high))
+    print(left_ratio, '\t', right_ratio)
+    # plot hist
+    start = -983
+    stop = -740
+    step = 10
+    bins = range(start, stop, step)
+    print(start, stop, step, bins)
+    fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
+
+    # LEFT
+    nl, binsl, patchesl = axes[0].hist(
+        left_data_mdc, bins, facecolor='blue', alpha=0.3, label='high perfusion')
+    # axes[0].hist(
+    #     left_data_high, bins, facecolor='blue', alpha=0.6, label='high perfusion')
+    axes[0].hist(
+        left_data_low, bins, facecolor='blue', alpha=0.9, label='low perfusion')
+    # RIGHT
+    nr, binsr, patchesr = axes[1].hist(
+        right_data_mdc, bins, facecolor='red', alpha=0.3, label='high perfusion')
+    # axes[1].hist(
+    #     right_data_high, bins, facecolor='red', alpha=0.6, label='high perfusion')
+    axes[1].hist(
+        right_data_low, bins, facecolor='red', alpha=0.9, label='low perfusion')
+
+    # CHARTS SETUP
+    axes[0].legend(loc='upper right')
+    axes[1].legend(loc='upper right')
+    fig.suptitle("Image with mc, Arterial 1mm \n Range: {} / {} \n Threshold: {}".format(
+                 thresholds[0], thresholds[2], thresholds[1]))
+
+    y_max = int(max(nl.max(), nr.max()))
+
+    yticks = range(0, y_max, 100000)
+    axes[0].set_title('Left lung low perfusion volume = %s' % left_ratio)
+    axes[0].set_xticks(bins)
+    axes[0].set_yticks(yticks)
+    axes[1].set_title('Right lung low perfusion volume = %s' % right_ratio)
+    axes[1].set_xticks(bins)
+    axes[1].set_yticks(yticks)
+
+    # save hist
+    folder = os.path.dirname(csv_path)
+    filepath = os.path.join(folder, "histogram.png", )
+    plt.savefig(filepath)
+    plt.show()
+
+    # save data
+    with open('stats.csv', mode='w+') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';',
+                            quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(['bin', 'val_left', 'val_right'])
+        print(bins, len(nl), len(nr))
+        for n in range(len(bins)-1):
+            print([bins[n], int(nl[n]), int(nr[n])])
+            writer.writerow([bins[n], int(nl[n]), int(nr[n])])
+
+
 def plot(csv_path):
     l1 = []
     l2 = []
@@ -147,6 +228,7 @@ def moveIntoFolder(f, name, wdir):
     name = name.replace(" ", "_")
     name = name.replace(",", "_")
     name = name.replace(".", "_")
+    name = name.replace("/", "_")
     dest_folder = os.path.join(wdir, name)
     wdir_path = os.path.join(wdir, f)
     dest_path = os.path.join(dest_folder, f)
@@ -216,13 +298,13 @@ def organize_series(study_folder_path):
 
 def unzip(zip_file):
     print("[*] Beginning extraction process...")
-    parent = os.path.dirname(zip_file)
-    basename = os.path.basename(zip_file)
-    out_folder = os.path.join(parent, basename, 'DICOM')
+    # parent = os.path.dirname(zip_file)
+    # basename = os.path.splitext(zip_file)[0]
+    # out_folder = os.path.join(basename, 'DICOM')
     zip = zipfile.ZipFile(zip_file)
     zip.setpassword(b'ar_unibg')
     for i, f in enumerate(zip.filelist):
-        f.filename = os.path.join(out_folder, 'extracted_{0:03}'.format(i))
+        f.filename = os.path.join('DICOM_C2', 'extracted_{0:03}'.format(i))
         zip.extract(f)
         print("--- Extracted '%s'" % (f.filename))
 
@@ -237,6 +319,9 @@ if __name__ == "__main__":
 
     parser.add_argument('--examine', action='store',
                         help='examine passed csv file')
+
+    parser.add_argument('--tresholds', action='store', nargs='+', type=float,
+                        help='array of tresholds')
 
     parser.add_argument('--plot', action='store',
                         help='plot passed csv file')
@@ -253,6 +338,9 @@ if __name__ == "__main__":
         plot(args.plot)
     elif (args.organize):
         organize_series(args.organize)
+    elif (args.examine and args.tresholds):
+        print(args.tresholds)
+        examine_treshold(args.examine, args.tresholds)
     elif (args.examine):
         examine(args.examine)
     elif (args.unzip):

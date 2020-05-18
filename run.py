@@ -40,11 +40,11 @@ def do_prediction(input_image, force_cpu):
 # low/high (10 or 20)
 
 
-def maskToCSV(mask, image, folder_path):
-    t1_low = -983
-    t2_low = -870
-    t1_high = -870
-    t2_high = -740
+def maskToCSV(mask, image, tresholds, folder_path):
+    t1_low = tresholds[0]
+    t2_low = tresholds[1]
+    t1_high = tresholds[1]
+    t2_high = tresholds[2]
 
     print('clean segmentation and write csv')
 
@@ -67,6 +67,8 @@ def maskToCSV(mask, image, folder_path):
                         continue
                     elif (mask[k][j][i] > 0 and pix < t1_low):
                         perfusion_mask[k][j][i] = 0
+                        writer.writerow(
+                            [pix, mask[k][j][i], perfusion_mask[k][j][i]])
                     elif (mask[k][j][i] > 0 and pix <= t2_low):
                         perfusion_mask[k][j][i] = 10
                         writer.writerow(
@@ -77,9 +79,11 @@ def maskToCSV(mask, image, folder_path):
                             [pix, mask[k][j][i], perfusion_mask[k][j][i]])
                     elif (mask[k][j][i] > 0 and pix > t2_high):
                         perfusion_mask[k][j][i] = 0
+                        writer.writerow(
+                            [pix, mask[k][j][i], perfusion_mask[k][j][i]])
 
     # Convert to itk image
-    out_img = sitk.GetImageFromArray(mask)
+    out_img = sitk.GetImageFromArray(perfusion_mask)
 
     spacing = image.GetSpacing()
     direction = image.GetDirection()
@@ -90,7 +94,8 @@ def maskToCSV(mask, image, folder_path):
 
     # Write output
     print('Writing output cleaned...')
-    sitk.WriteImage(out_img, 'lung_mask_palette.nrrd')
+    sitk.WriteImage(out_img, os.path.join(
+        folder_path, 'lung_mask_palette.nrrd'))
 
     return perfusion_mask
 
@@ -136,24 +141,33 @@ if __name__ == "__main__":
     parser.add_argument('--dicomdir', action='store',
                         default=None, help='the dicom folder of target image')
 
+    parser.add_argument('--nrrddir', action='store',
+                        default=None, help='the dicom folder of target image')
+
     parser.add_argument('--outfolder', action='store',
                         default="output/", help='the output folder')
 
+    parser.add_argument('--tresholds', action='store', nargs='+', type=float,
+                        help='array of tresholds')
+
     args = parser.parse_args()
-    if (not args.dicomdir):
-        sys.exit("Please provide dicom series directory")
 
-    path_image = args.dicomdir
+    if (args.dicomdir):
+        path_image = args.dicomdir
 
-    # create temp folder
-    temp_path = os.path.join(os.getcwd(), "temp/")
-    os.makedirs(temp_path, exist_ok=True)
+        # create temp folder
+        temp_path = os.path.join(os.getcwd(), "temp/")
+        os.makedirs(temp_path, exist_ok=True)
 
-    # create path to temp files
-    nrrd_image_path = os.path.join(temp_path, 'image.nrrd')
+        # create path to temp files
+        nrrd_image_path = os.path.join(temp_path, 'image.nrrd')
 
-    # convert input dicom to nrrd
-    image = dicom2nrrd(path_image, nrrd_image_path)
+        # convert input dicom to nrrd
+        image = dicom2nrrd(path_image, nrrd_image_path)
+    elif (args.nrrddir):
+        image = sitk.ReadImage(args.nrrddir)
+    else:
+        sys.exit('please provide input image')
 
     # run segmentation (or load a mask)
     if (args.use_mask):
@@ -163,6 +177,6 @@ if __name__ == "__main__":
         segmentation_arr = do_prediction(image, args.force_cpu)
 
     # extract only values inside the target palette
-    maskToCSV(segmentation_arr, image, args.outfolder)
+    maskToCSV(segmentation_arr, image, args.tresholds, args.outfolder)
 
     print('DONE, output in:', args.outfolder)
