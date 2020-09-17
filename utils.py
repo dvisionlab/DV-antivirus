@@ -245,7 +245,13 @@ def getImageSeriesId(file_name, series_list, desc_list):
     # print('Reading image...')
     file_reader = sitk.ImageFileReader()
     file_reader.SetFileName(file_name)
-    file_reader.ReadImageInformation()
+
+    try:
+        file_reader.ReadImageInformation()
+    except:
+        print('ERROR while reading: ', file_name)
+        print('SKIP file')
+        return
 
     # Get the sorted file names, opens all files in the directory and reads the meta-information
     # without reading the bulk pixel data
