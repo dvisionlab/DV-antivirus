@@ -147,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--outfolder', action='store',
                         default="output/", help='the output folder')
 
-    parser.add_argument('--tresholds', action='store', nargs='+', type=float,
+    parser.add_argument('--thresholds', action='store', nargs='+', type=float,
                         help='array of tresholds')
 
     args = parser.parse_args()

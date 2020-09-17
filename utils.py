@@ -361,7 +361,7 @@ if __name__ == "__main__":
     parser.add_argument('--examine', action='store',
                         help='examine passed csv file with default thresholds')
 
-    parser.add_argument('--tresholds', action='store', nargs='+', type=float,
+    parser.add_argument('--thresholds', action='store', nargs='+', type=float,
                         help='array of user defined tresholds')
 
     parser.add_argument('--plot', action='store',
