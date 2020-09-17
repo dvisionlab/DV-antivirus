@@ -1,4 +1,3 @@
-# generate histograms
 from matplotlib import pyplot as plt
 import csv
 import numpy as np
@@ -18,6 +17,16 @@ import zipfile36 as zipfile
 
 
 def examine(csv_path):
+    ''' 
+    Examine a csv file. 
+  
+    Generate histogram (saved as png ans csv in current working directory) 
+    and low perfusion volume ratio,cusing fixed values as thresholds. 
+  
+    Parameters: 
+    csv_path (string): path to .csv to analyze 
+    '''
+
     print('Loading data...')
     data = np.genfromtxt(csv_path, delimiter=';', dtype=int, names=True)
     print('Data loaded.')
@@ -27,16 +36,15 @@ def examine(csv_path):
     print('LEFT LUNG\tRIGHT LUNG')
     print(len(left_data), '\t', len(right_data))
 
+    # NOTE: the key 'valore_con_mdc' was introduced in an early step, when the aim was to compare
+    # results between series acquired with and without contrast medium. Now the key 'valore_senza_mdc'
+    # is unused, but maybe can still be useful in the future.
     left_data_low = left_data[left_data['perfusion'] == 10]['valore_con_mdc']
     left_data_high = left_data[left_data['perfusion'] == 20]['valore_con_mdc']
-    right_data_low = right_data[right_data['perfusion']
-                                == 10]['valore_con_mdc']
-    right_data_high = right_data[right_data['perfusion']
-                                 == 20]['valore_con_mdc']
+    right_data_low = right_data[right_data['perfusion'] == 10]['valore_con_mdc']
+    right_data_high = right_data[right_data['perfusion'] == 20]['valore_con_mdc']
     print(len(left_data_low), '\t', len(left_data_high))
     print(len(right_data_low), '\t', len(right_data_high))
-
-    print(left_data_low)
 
     # select mdc column
     left_data_mdc = left_data['valore_con_mdc']
@@ -44,16 +52,18 @@ def examine(csv_path):
 
     # compute ratio on total volume
     left_ratio = len(left_data_low)/(len(left_data_low)+len(left_data_high))
-    right_ratio = len(right_data_low) / \
-        (len(right_data_low)+len(right_data_high))
+    right_ratio = len(right_data_low) / (len(right_data_low)+len(right_data_high))
     print(left_ratio, '\t', right_ratio)
-    # plot hist
+
+    # define bins
     start = -983
     stop = -740
     step = 10
     bins = range(start, stop, step)
-    print(start, stop, step, bins)
+    print('Hist inputs: ', start, stop, step, bins)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
+
+    # PLOT histogram
 
     # LEFT
     nl, binsl, patchesl = axes[0].hist(
@@ -71,6 +81,7 @@ def examine(csv_path):
         right_data_low, bins, facecolor='red', alpha=0.9, label='low perfusion')
 
     # CHARTS SETUP
+
     axes[0].legend(loc='upper right')
     axes[1].legend(loc='upper right')
     fig.suptitle("Image with mc, Arterial 1mm")
@@ -86,12 +97,12 @@ def examine(csv_path):
     axes[1].set_yticks(yticks)
     axes[1].set_title('Right lung low perfusion volume = %s' % right_ratio)
 
-    # save hist
+    # save hist as png
     plt.savefig('plots.png')
     plt.show()
 
-    # save data
-    with open('stats.csv', mode='w+') as csv_file:
+    # save hist data in csv
+    with open('histogram.csv', mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['bin', 'val_left', 'val_right'])
@@ -102,6 +113,17 @@ def examine(csv_path):
 
 
 def examine_treshold(csv_path, thresholds):
+    ''' 
+    Examine a csv file. 
+  
+    Generate histogram (saved as png and csv, in the same folder of input file) 
+    and low perfusion volume ratio, using user defined thresholds. 
+  
+    Parameters: 
+    csv_path (string): path to .csv to analyze 
+    thresholds (array): array in the form [lower_bound_value, threshold_value, high_bound_value] 
+    '''
+
     print('Loading data...')
     data = np.genfromtxt(csv_path, delimiter=';', dtype=int, names=True)
     print('Data loaded.')
@@ -138,26 +160,23 @@ def examine_treshold(csv_path, thresholds):
     right_ratio = len(right_data_low) / \
         (len(right_data_low)+len(right_data_high))
     print(left_ratio, '\t', right_ratio)
-    # plot hist
-    start = -983
-    stop = -740
+
+    # define bins
+    start = t1_low
+    stop = t2_high
     step = 10
     bins = range(start, stop, step)
-    print(start, stop, step, bins)
+    print('Hist bins input:', start, stop, step, bins)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
 
     # LEFT
     nl, binsl, patchesl = axes[0].hist(
         left_data_mdc, bins, facecolor='blue', alpha=0.3, label='high perfusion')
-    # axes[0].hist(
-    #     left_data_high, bins, facecolor='blue', alpha=0.6, label='high perfusion')
     axes[0].hist(
         left_data_low, bins, facecolor='blue', alpha=0.9, label='low perfusion')
     # RIGHT
     nr, binsr, patchesr = axes[1].hist(
         right_data_mdc, bins, facecolor='red', alpha=0.3, label='high perfusion')
-    # axes[1].hist(
-    #     right_data_high, bins, facecolor='red', alpha=0.6, label='high perfusion')
     axes[1].hist(
         right_data_low, bins, facecolor='red', alpha=0.9, label='low perfusion')
 
@@ -177,14 +196,14 @@ def examine_treshold(csv_path, thresholds):
     axes[1].set_xticks(bins)
     axes[1].set_yticks(yticks)
 
-    # save hist
+    # save hist as png
     folder = os.path.dirname(csv_path)
     filepath = os.path.join(folder, "histogram.png", )
     plt.savefig(filepath)
     plt.show()
 
-    # save data
-    with open('stats.csv', mode='w+') as csv_file:
+    # save hist data in csv
+    with open('histogram.csv', mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['bin', 'val_left', 'val_right'])
@@ -195,6 +214,10 @@ def examine_treshold(csv_path, thresholds):
 
 
 def plot(csv_path):
+    ''' 
+    ??? OBSOLETE ???
+    '''
+
     l1 = []
     l2 = []
 
@@ -267,7 +290,18 @@ def getImageSeriesId(file_name, series_list, desc_list):
 
 
 def organize_series(study_folder_path):
-    print(study_folder_path)
+    ''' 
+    Organize a DICOM study folder into series subfolders.
+    
+    WARNING: This happens in-place.
+  
+    Parameters: 
+    study_folder_path (string): path to DICOM study folder
+    '''
+
+    print('Reading... ', study_folder_path)
+
+    # read all the files in the directory (just the metadata)
     for (root, dirs, files) in os.walk(study_folder_path):
         print('root', root)
         print('dirs', len(dirs))
@@ -278,6 +312,7 @@ def organize_series(study_folder_path):
         series_list = []
         desc_list = []
 
+        # get all series id into a list
         for f in range(len(files)):
             print('file', f, '/', len(files))
             path = os.path.join(root, files[f])
@@ -289,13 +324,13 @@ def organize_series(study_folder_path):
         print(len(series_list), len(desc_list))
         print('\n\n---------------------------\n\n')
 
+        # for each series found, get all files and move them into the same folder
         for n in range(len(series_list)):
             series_ID = series_list[n]
             description = desc_list[n]
             sorted_file_names = sitk.ImageSeriesReader.GetGDCMSeriesFileNames(
                 data_directory, series_ID)
-            print('series', series_ID, '\tdesc', description,
-                  '\tnumber of files', len(sorted_file_names))
+            print('series', series_ID, '\tdesc', description,'\tnumber of files', len(sorted_file_names))
             for file_path in sorted_file_names:
                 f = os.path.basename(file_path)
                 target_dir = os.path.dirname(file_path)
@@ -324,10 +359,10 @@ if __name__ == "__main__":
         description='Extract lung values from given images and store output in target csv file')
 
     parser.add_argument('--examine', action='store',
-                        help='examine passed csv file')
+                        help='examine passed csv file with default thresholds')
 
     parser.add_argument('--tresholds', action='store', nargs='+', type=float,
-                        help='array of tresholds')
+                        help='array of user defined tresholds')
 
     parser.add_argument('--plot', action='store',
                         help='plot passed csv file')
@@ -336,7 +371,7 @@ if __name__ == "__main__":
                         help='organize passed study folder into series subfolders')
 
     parser.add_argument('--unzip', action='store',
-                        help='organize passed study folder into series subfolders')
+                        help='unzip a folder')
 
     args = parser.parse_args()
 
