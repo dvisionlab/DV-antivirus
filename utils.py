@@ -18,7 +18,7 @@ import zipfile36 as zipfile
 
 def examine(csv_path):
     ''' 
-    Examine a csv file. 
+    Examine a csv file. [OBSOLETE]
   
     Generate histogram (saved as png ans csv in current working directory) 
     and low perfusion volume ratio,cusing fixed values as thresholds. 
@@ -164,7 +164,7 @@ def examine_treshold(csv_path, thresholds):
     # define bins
     start = t1_low
     stop = t2_high
-    step = 10
+    step = 1
     bins = range(start, stop, step)
     print('Hist bins input:', start, stop, step, bins)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
@@ -198,12 +198,12 @@ def examine_treshold(csv_path, thresholds):
 
     # save hist as png
     folder = os.path.dirname(csv_path)
-    filepath = os.path.join(folder, "histogram.png", )
+    filepath = os.path.join(folder, "histogram.png")
     plt.savefig(filepath)
     plt.show()
 
     # save hist data in csv
-    with open('histogram.csv', mode='w+') as csv_file:
+    with open(os.path.join(folder, "histogram.csv"), mode='w+') as csv_file:
         writer = csv.writer(csv_file, delimiter=';',
                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['bin', 'val_left', 'val_right'])
@@ -362,7 +362,7 @@ if __name__ == "__main__":
                         help='examine passed csv file with default thresholds')
 
     parser.add_argument('--thresholds', action='store', nargs='+', type=float,
-                        help='array of user defined tresholds')
+                        help='array of user defined tresholds', default=[-940, -860, -740])
 
     parser.add_argument('--plot', action='store',
                         help='plot passed csv file')
@@ -379,10 +379,8 @@ if __name__ == "__main__":
         plot(args.plot)
     elif (args.organize):
         organize_series(args.organize)
-    elif (args.examine and args.tresholds):
-        print(args.tresholds)
-        examine_treshold(args.examine, args.tresholds)
     elif (args.examine):
-        examine(args.examine)
+        print(args.thresholds)
+        examine_treshold(args.examine, args.thresholds)
     elif (args.unzip):
         unzip(args.unzip)
