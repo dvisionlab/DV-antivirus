@@ -27,7 +27,7 @@ In particular, at the moment the best results are obtained using images with con
 
 That's all!
 
-## Windows
+### Windows
 
 - Install [conda](https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe)
   [non rimpiazzare il python di default,
@@ -74,6 +74,19 @@ Run this to generate histograms and compute low perfusion ratio:
 > --thresholds [lower_bound, threshold, upper_bound] : use this to set custom thresholds (must be same as previous step)
 
 Histogram is shown and saved in the same directory of the input file, as histogram.png and histogram.csv.
+
+### Output details
+
+At the end of `run.py` script execution, the following files are produced:
+
+- `output/lungs.nrrd` : contains lungs extraction (everything else is set to a fixed value of -1000)
+- `output/lung_mask_palette.nrrd` : contains lungs mask that shows low perfusion voxels (set to a fixed value of 10) and high perfusion voxels (set to a fixed value of 20)
+- `output/output.csv` : the same as lung_mask_palette but in a tabular form
+
+At the end of `utils.py` script execution, the following files are produced:
+
+- `output/histogram.png` : the resulting histograms & ratio low/high pefusion
+- `output/histogram.csv` : the same data but in a tabular form
 
 ## Authors
 

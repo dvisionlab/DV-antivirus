@@ -82,20 +82,34 @@ def maskToCSV(mask, image, tresholds, folder_path):
                         writer.writerow(
                             [pix, mask[k][j][i], perfusion_mask[k][j][i]])
 
-    # Convert to itk image
-    out_img = sitk.GetImageFromArray(perfusion_mask)
+
 
     spacing = image.GetSpacing()
     direction = image.GetDirection()
     origin = image.GetOrigin()
+
+    # Write perfusion mask
+    print('Writing perfusion mask...')
+    out_img = sitk.GetImageFromArray(perfusion_mask)
     out_img.SetSpacing(spacing)
     out_img.SetDirection(direction)
     out_img.SetOrigin(origin)
 
-    # Write output
-    print('Writing output cleaned...')
     sitk.WriteImage(out_img, os.path.join(
         folder_path, 'lung_mask_palette.nrrd'))
+
+    # Write lungs extraction
+    print('Writing lungs extraction...')
+    image_arr = sitk.GetArrayFromImage(image)
+    mask[mask == 2] = 1
+    lungs_arr = image_arr * mask
+    lungs_arr[mask == 0] = -1000
+    lungs = sitk.GetImageFromArray(lungs_arr)
+    lungs.SetSpacing(spacing)
+    lungs.SetDirection(direction)
+    lungs.SetOrigin(origin)
+    sitk.WriteImage(lungs, os.path.join(
+        folder_path, 'lungs.nrrd'))   
 
     return perfusion_mask
 
@@ -125,7 +139,6 @@ def register(image_fixed, image_move, folder_out):
     subprocess.call("./runRegistration.sh -f %s -m %s -o %s" %
                     (image_fixed, image_move, folder_out), shell=True)
 
-
 if __name__ == "__main__":
     # init arg parser
 
@@ -148,7 +161,7 @@ if __name__ == "__main__":
                         default="output/", help='the output folder')
 
     parser.add_argument('--thresholds', action='store', nargs='+', type=float,
-                        help='array of tresholds')
+                        help='array of tresholds', default=[-940, -860, -740])
 
     args = parser.parse_args()
 
@@ -177,6 +190,6 @@ if __name__ == "__main__":
         segmentation_arr = do_prediction(image, args.force_cpu)
 
     # extract only values inside the target palette
-    maskToCSV(segmentation_arr, image, args.tresholds, args.outfolder)
+    maskToCSV(segmentation_arr, image, args.thresholds, args.outfolder)
 
     print('DONE, output in:', args.outfolder)
