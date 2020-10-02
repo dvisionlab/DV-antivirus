@@ -165,7 +165,7 @@ def examine_treshold(csv_path, thresholds):
     start = t1_low
     stop = t2_high
     step = 1
-    bins = range(start, stop, step)
+    bins = range(int(start), int(stop)+2, int(step))
     print('Hist bins input:', start, stop, step, bins)
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
 
