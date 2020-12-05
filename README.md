@@ -88,6 +88,9 @@ At the end of `utils.py` script execution, the following files are produced:
 - `output/histogram.png` : the resulting histograms & ratio low/high pefusion
 - `output/histogram.csv` : the same data but in a tabular form
 
+### Registration
+use `registration.py` to register images. It accepth both dicom dirs or nrrd files. Uses elastix via external script `runRegistration.sh`.
+
 ## Authors
 
 You can contact us at:
