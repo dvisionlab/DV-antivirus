@@ -58,6 +58,13 @@ if __name__ == "__main__":
     parser.add_argument("--outpath", action="store", help="the output file path")
 
     parser.add_argument(
+        "--register",
+        action="store_true",
+        default=None,
+        help="generate registered image",
+    )
+
+    parser.add_argument(
         "--subtract",
         action="store_true",
         default=None,
@@ -104,29 +111,33 @@ if __name__ == "__main__":
     if args.outpath is None:
         sys.exit("Please provide output path")
 
-    res = register(image_fixed, image_moving, temp_path)
+    if args.register:
+        res = register(image_fixed, image_moving, temp_path)
 
-    if res == 0:
-        # move to output path
-        os.rename(os.path.join(temp_path, "result.nrrd"), args.outpath)
+        if res == 0:
+            # move to output path
+            os.rename(os.path.join(temp_path, "result.nrrd"), args.outpath)
 
-        # remove temp dir
-        # os.rmdir(temp_path)
-        print("\nDONE registration, output at:", args.outpath)
+            # remove temp dir
+            # os.rmdir(temp_path)
+            print("\nDONE registration, output at:", args.outpath)
 
-        if args.subtract:
-            im1 = sitk.ReadImage(image_fixed)
-            im2 = sitk.ReadImage(args.outpath)
-            arr1 = sitk.GetArrayFromImage(im1)
-            arr2 = sitk.GetArrayFromImage(im2)
-            diff_arr = arr1 - arr2
-            diff_im = sitk.GetImageFromArray(diff_arr)
-            diff_im.SetOrigin(im1.GetOrigin())
-            diff_im.SetSpacing(im1.GetSpacing())
-            diff_im.SetDirection(im1.GetDirection())
-            # outdir = os.path.dirname(args.outpath)
-            filename = os.path.splitext(args.outpath)[0] + "_sub.nrrd"
-            sitk.WriteImage(diff_im, filename)
-            print("\nSub image:", filename)
-    else:
-        print("Error in registration process")
+        else:
+            print("Error in registration process")
+
+    if args.subtract:
+        im1 = sitk.ReadImage(image_fixed)
+        im2 = sitk.ReadImage(args.outpath)
+        arr1 = sitk.GetArrayFromImage(im1)
+        arr2 = sitk.GetArrayFromImage(im2)
+        diff_arr = arr1 - arr2
+        diff_im = sitk.GetImageFromArray(diff_arr)
+        diff_im.SetOrigin(im1.GetOrigin())
+        diff_im.SetSpacing(im1.GetSpacing())
+        diff_im.SetDirection(im1.GetDirection())
+        # outdir = os.path.dirname(args.outpath)
+        filename = os.path.splitext(args.outpath)[0] + "_sub.nrrd"
+        sitk.WriteImage(diff_im, filename)
+        print("\nSub image:", filename)
+
+    print("ALL DONE")
