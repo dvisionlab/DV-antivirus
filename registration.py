@@ -67,7 +67,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # create temp folder
-    temp_path = os.path.join(os.getcwd(), "temp/")
+    temp_path = os.path.join(os.getcwd(), "temp")
     os.makedirs(temp_path, exist_ok=True)
 
     if args.dicomdir_fixed:
