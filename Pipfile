@@ -16,8 +16,7 @@ SimpleITK="*"
 tqdm="*"
 fill_voids="*"
 zipfile36="*"
+vtk = "*"
 
 [requires]
 python_version = "3.8"
-
-

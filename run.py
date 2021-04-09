@@ -11,10 +11,14 @@ import sys
 from utils import getImageSeriesId, readImage, dicom2nrrd
 
 
-def do_prediction(input_image, force_cpu):
+def do_prediction(input_image, force_cpu, lobes):
     # Run segmentation
     print("Running segmentation...")
-    segmentation = mask.apply(input_image, force_cpu=force_cpu)
+    if lobes:
+        print("setting lobe model")
+        model = mask.get_model("unet", "LTRCLobes")
+
+    segmentation = mask.apply(input_image, model, force_cpu=force_cpu)
     # free memory
     torch.cuda.empty_cache()
 
@@ -93,18 +97,6 @@ def maskToCSV(mask, image, tresholds, folder_path):
 
     sitk.WriteImage(out_img, os.path.join(folder_path, "lung_mask_palette.nrrd"))
 
-    # Write lungs extraction
-    print("Writing lungs extraction...")
-    image_arr = sitk.GetArrayFromImage(image)
-    mask[mask == 2] = 1
-    lungs_arr = image_arr * mask
-    lungs_arr[mask == 0] = -1000
-    lungs = sitk.GetImageFromArray(lungs_arr)
-    lungs.SetSpacing(spacing)
-    lungs.SetDirection(direction)
-    lungs.SetOrigin(origin)
-    sitk.WriteImage(lungs, os.path.join(folder_path, "lungs.nrrd"))
-
     return perfusion_mask
 
 
@@ -182,17 +174,26 @@ if __name__ == "__main__":
         default=[-940, -860, -740],
     )
 
+    parser.add_argument(
+        "--lobes", action="store_true", default=False, help="Use lobes model"
+    )
+
+    parser.add_argument(
+        "--mask2csv", action="store_true", default=False, help="compute csv"
+    )
+
     args = parser.parse_args()
 
     if args.dicomdir:
         path_image = args.dicomdir
 
         # create temp folder
-        temp_path = os.path.join(os.getcwd(), "temp/")
-        os.makedirs(temp_path, exist_ok=True)
+        # temp_path = os.path.join(os.getcwd(), "temp/")
+        # os.makedirs(temp_path, exist_ok=True)
 
-        # create path to temp files
-        nrrd_image_path = os.path.join(temp_path, "image.nrrd")
+        # # create path to temp files
+        # nrrd_image_path = os.path.join(temp_path, "image.nrrd")
+        nrrd_image_path = "./image.nrrd"
 
         # convert input dicom to nrrd
         image = dicom2nrrd(path_image, nrrd_image_path)
@@ -206,9 +207,22 @@ if __name__ == "__main__":
         mask = sitk.ReadImage(args.use_mask)
         segmentation_arr = sitk.GetArrayFromImage(mask)
     else:
-        segmentation_arr = do_prediction(image, args.force_cpu)
+        segmentation_arr = do_prediction(image, args.force_cpu, args.lobes)
 
     # extract only values inside the target palette
-    maskToCSV(segmentation_arr, image, args.thresholds, args.outfolder)
+    if args.mask2csv:
+        maskToCSV(segmentation_arr, image, args.thresholds, args.outfolder)
+
+    # Write lungs extraction
+    print("Writing lungs extraction...")
+    image_arr = sitk.GetArrayFromImage(image)
+    segmentation_arr[segmentation_arr > 1] = 1
+    lungs_arr = image_arr * segmentation_arr
+    lungs_arr[segmentation_arr == 0] = -1500
+    lungs = sitk.GetImageFromArray(lungs_arr)
+    lungs.SetSpacing(image.GetSpacing())
+    lungs.SetDirection(image.GetDirection())
+    lungs.SetOrigin(image.GetOrigin())
+    sitk.WriteImage(lungs, "./lungs.nrrd")
 
     print("DONE, output in:", args.outfolder)
