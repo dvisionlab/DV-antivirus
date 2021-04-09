@@ -32,18 +32,20 @@ echo "$parameterM" "as image to be registered"
 echo "$parameterO" "as output folder where to store results"
 echo "$(pwd) as pwd"
 
-LD_LIBRARY_PATH="$(pwd)/elastix_linux64_v4.8"
+LD_LIBRARY_PATH="$(pwd)\\elastix_linux64_v4.8"
 export LD_LIBRARY_PATH
 
-./elastix_linux64_v4.8/elastix -f $parameterF -m $parameterM -p $(pwd)/elastix_linux64_v4.8/params/Par0035.SPREAD.MI.af.0.txt -p $(pwd)/elastix_linux64_v4.8/params/Par0035.SPREAD.MI.bs.1.ASGD.txt -out $parameterO
-./elastix_linux64_v4.8/transformix -in $parameterM -tp $(pwd)/temp/TransformParameters.1.txt -out $parameterO
+.\\elastix-5.0.1-win64\\elastix -f $parameterF -m $parameterM -p $(pwd)/elastix-5.0.1-win64/params/Par0035.SPREAD.MI.af.0.txt -p $(pwd)/elastix-5.0.1-win64/params/Par0035.SPREAD.MI.bs.1.ASGD.txt -out $parameterO
+.\\elastix-5.0.1-win64\\transformix -in $parameterM -tp $(pwd)/temp/TransformParameters.1.txt -out $parameterO
 
-rm $(pwd)/temp/*.txt
-rm $(pwd)/temp/*.log
-rm $(pwd)/temp/result.0.*
+# rm $(pwd)/temp/*.txt
+# rm $(pwd)/temp/*.log
+# rm $(pwd)/temp/result.0.*
 
 echo "DONE Elastix on the following images"
 echo "$parameterF" "as fixed image"
 echo "$parameterM" "as image to be registered"
 echo "$parameterO" "as output folder where to store results"
 echo "$(pwd) as pwd"
+
+read -p "press key to continue..."
