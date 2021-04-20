@@ -1,4 +1,4 @@
-from lungmask import mask
+from lungmask import mask as lung_mask
 import SimpleITK as sitk
 import os
 import numpy as np
@@ -74,16 +74,35 @@ def label_mask(image, mask, thresholds):
     return perfusion_mask
 
 
-def do_prediction(input_image, force_cpu):
+def do_prediction(input_image, force_cpu, dev=False):
     # Run segmentation
     print("Running segmentation...")
-    segmentation = mask.apply(input_image, force_cpu=force_cpu)
-    # free memory
-    torch.cuda.empty_cache()
+    if dev:
+        # only for dev: load mask from file
+        print("WARNING: DEV MODE - loading segmentation from file")
+        out_img = sitk.ReadImage("./lung_segmentation_original.nrrd")
+    else:
+        segmentation = lung_mask.apply(input_image, force_cpu=force_cpu)
+        # free memory
+        torch.cuda.empty_cache()
+        # Convert to itk image
+        # isVector=True to get a 2D vector image instead of 3D image
+        out_img = sitk.GetImageFromArray(segmentation)
 
-    # Convert to itk image
-    # isVector=True to get a 2D vector image instead of 3D image
-    out_img = sitk.GetImageFromArray(segmentation)
+    print("Erosion...")
+    # correct with erosion filter
+    tic = time.time()
+    eroder = sitk.BinaryErodeImageFilter()
+    eroder.SetKernelType(sitk.sitkBall)
+    eroder.SetKernelRadius(1)
+    # lung 1
+    eroder.SetForegroundValue(1)
+    out_img = eroder.Execute(out_img)
+    # lung 2
+    eroder.SetForegroundValue(2)
+    out_img = eroder.Execute(out_img)
+    toc = time.time()
+    print("erosion:", toc - tic)
 
     spacing = input_image.GetSpacing()
     direction = input_image.GetDirection()
@@ -96,7 +115,7 @@ def do_prediction(input_image, force_cpu):
     print("Writing output...")
     sitk.WriteImage(out_img, "lung_segmentation.nrrd")
 
-    return segmentation
+    return out_img
 
 
 def label_image(mask, image, tresholds, folder_path):
@@ -133,7 +152,7 @@ def label_image(mask, image, tresholds, folder_path):
     return perfusion_mask
 
 
-def compute_stats(perf_arr, thresholds):
+def compute_stats(perf_arr, thresholds, spacing, dims):
     # first digit is the purfusion zone, second digit (units) is the lung
 
     label_00 = np.count_nonzero(perf_arr == 0)
@@ -159,16 +178,38 @@ def compute_stats(perf_arr, thresholds):
 
     print(perc_low_perf_left, perc_low_perf_right)
 
+    conversion_factor = (
+        spacing[0] * spacing[1] * spacing[2] * dims[0] * dims[1] * dims[2]
+    )
+
     file_path = os.path.join("./new_output.csv")
     with open(file_path, mode="w+") as csv_file:
         writer = csv.writer(
             csv_file, delimiter=";", quotechar='"', quoting=csv.QUOTE_MINIMAL
         )
-        writer.writerow(["desc", "n_of_px", "percentage"])
-        writer.writerow(["tot_vol_left", tot_vol_left, ""])
-        writer.writerow(["low_perf_left", low_perf_vol_left, perc_low_perf_left])
-        writer.writerow(["tot_vol_right", tot_vol_right, ""])
-        writer.writerow(["low_perf_right", low_perf_vol_right, perc_low_perf_right])
+        writer.writerow(["desc", "n_of_px", "vol [mm^3]" "percentage"])
+        writer.writerow(
+            ["tot_vol_left", tot_vol_left, tot_vol_left * conversion_factor, ""]
+        )
+        writer.writerow(
+            [
+                "low_perf_left",
+                low_perf_vol_left,
+                low_perf_vol_left * conversion_factor,
+                perc_low_perf_left,
+            ]
+        )
+        writer.writerow(
+            ["tot_vol_right", tot_vol_right, tot_vol_right * conversion_factor, ""]
+        )
+        writer.writerow(
+            [
+                "low_perf_right",
+                low_perf_vol_right,
+                low_perf_vol_right * conversion_factor,
+                perc_low_perf_right,
+            ]
+        )
 
     return
 
@@ -204,6 +245,10 @@ if __name__ == "__main__":
         default=[-1000, -930, -770],
     )
 
+    parser.add_argument(
+        "--load_mask", action="store_true", help="use pre-computed mask FOR DEV"
+    )
+
     args = parser.parse_args()
 
     path_image = args.dicomdir
@@ -221,11 +266,8 @@ if __name__ == "__main__":
     image = dicom2nrrd(path_image, nrrd_image_path)
 
     # run segmentation (or load a mask)
-    segmentation_arr = do_prediction(image, args.force_cpu)
-
-    # only for dev: load mask from file
-    # mask = sitk.ReadImage("./lung_segmentation.nrrd")
-    # segmentation_arr = sitk.GetArrayFromImage(mask)
+    segmentation = do_prediction(image, args.force_cpu, args.load_mask)
+    segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette
     perfusion_mask = label_image(
@@ -233,7 +275,7 @@ if __name__ == "__main__":
     )
 
     # compute volumes
-    compute_stats(perfusion_mask, args.thresholds)
+    compute_stats(perfusion_mask, args.thresholds, image.GetSpacing(), image.GetSize())
 
     toc = time.perf_counter()
 
