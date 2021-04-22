@@ -152,7 +152,7 @@ def label_image(mask, image, tresholds, folder_path):
     return perfusion_mask
 
 
-def compute_stats(perf_arr, thresholds, spacing, dims):
+def compute_stats(perf_arr, thresholds, spacing, dims, outdir):
     # first digit is the purfusion zone, second digit (units) is the lung
 
     label_00 = np.count_nonzero(perf_arr == 0)
@@ -182,7 +182,7 @@ def compute_stats(perf_arr, thresholds, spacing, dims):
         spacing[0] * spacing[1] * spacing[2] * dims[0] * dims[1] * dims[2]
     )
 
-    file_path = os.path.join("./new_output.csv")
+    file_path = os.path.join(outdir, "./output.csv")
     with open(file_path, mode="w+") as csv_file:
         writer = csv.writer(
             csv_file, delimiter=";", quotechar='"', quoting=csv.QUOTE_MINIMAL
@@ -228,12 +228,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dicomdir",
         action="store",
-        default=None,
+        required=True,
         help="the dicom folder of target image",
     )
 
     parser.add_argument(
-        "--outfolder", action="store", default="output/", help="the output folder"
+        "--outdir", action="store", help="the output folder", required=True
     )
 
     parser.add_argument(
@@ -271,13 +271,13 @@ if __name__ == "__main__":
 
     # extract only values inside the target palette
     perfusion_mask = label_image(
-        segmentation_arr, image, args.thresholds, args.outfolder
+        segmentation_arr, image, args.thresholds, args.outdir
     )
 
     # compute volumes
-    compute_stats(perfusion_mask, args.thresholds, image.GetSpacing(), image.GetSize())
+    compute_stats(perfusion_mask, args.thresholds, image.GetSpacing(), image.GetSize(), args.outdir)
 
     toc = time.perf_counter()
 
     print(f"DONE in {toc - tic:0.1f} seconds")
-    print("Output in:", args.outfolder)
+    print("Output in:", args.outdir)
