@@ -33,6 +33,7 @@ That's all!
   [non rimpiazzare il python di default,
   non aggiungere nulla alle variabili d ambiente]
 - Install pytorch with `conda install pytorch torchvision cpuonly -c pytorch`
+- Install lungmask (see [its readme](https://github.com/JoHof/lungmask))
 - Install needed packages (see Pipfile) with `conda install` or `pip install`
 
 eg:
@@ -40,6 +41,9 @@ eg:
 > conda install -c conda-forge pydicom  
 > conda install -c simpleitk simpleitk  
 > conda install -c anaconda scikit-image
+
+#### Troubleshooting
+If you get this error: `numpy.ndarray size changed, may indicate binary incompatibility. Expected 88 from C header, got 80 from PyObject`, just try to uninstall and reinstall numpy.
 
 ## Usage
 
