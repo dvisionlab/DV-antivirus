@@ -178,9 +178,7 @@ def compute_stats(perf_arr, thresholds, spacing, dims, outdir):
 
     print(perc_low_perf_left, perc_low_perf_right)
 
-    conversion_factor = (
-        spacing[0] * spacing[1] * spacing[2] * dims[0] * dims[1] * dims[2]
-    )
+    conversion_factor = spacing[0] * spacing[1] * spacing[2]
 
     file_path = os.path.join(outdir, "./output.csv")
     with open(file_path, mode="w+") as csv_file:
@@ -270,12 +268,16 @@ if __name__ == "__main__":
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette
-    perfusion_mask = label_image(
-        segmentation_arr, image, args.thresholds, args.outdir
-    )
+    perfusion_mask = label_image(segmentation_arr, image, args.thresholds, args.outdir)
 
     # compute volumes
-    compute_stats(perfusion_mask, args.thresholds, image.GetSpacing(), image.GetSize(), args.outdir)
+    compute_stats(
+        perfusion_mask,
+        args.thresholds,
+        image.GetSpacing(),
+        image.GetSize(),
+        args.outdir,
+    )
 
     toc = time.perf_counter()
 
