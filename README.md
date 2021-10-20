@@ -43,6 +43,7 @@ eg:
 > conda install -c anaconda scikit-image
 
 #### Troubleshooting
+
 If you get this error: `numpy.ndarray size changed, may indicate binary incompatibility. Expected 88 from C header, got 80 from PyObject`, just try to uninstall and reinstall numpy.
 
 ## Usage
@@ -52,6 +53,16 @@ If you get this error: `numpy.ndarray size changed, may indicate binary incompat
 Run this to subdivide series in the main folder:
 
 > python utils.py --organize path/to/dicom/study/folder
+
+### Complete workflow
+
+To run the complete workflow (lungs extraction & stats analysis) on a folder that contains a single dicom serie, run the following command:
+
+> python complete_workflow.py
+> Options:  
+> --dicomdir : followed by the path to the input folder  
+> --outdir : followed by the path to the output folder  
+> [optional] --thresholds : followed by the three thresholds divided by spaces (lower_bound, threshold, upper_bound), eg -1000 -920 -770
 
 ### Lung segmentation & values extraction
 
@@ -93,6 +104,7 @@ At the end of `utils.py` script execution, the following files are produced:
 - `output/histogram.csv` : the same data but in a tabular form
 
 ### Registration
+
 use `registration.py` to register images. It accepth both dicom dirs or nrrd files. Uses elastix via external script `runRegistration.sh`.
 
 ## Authors
