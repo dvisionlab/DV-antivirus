@@ -152,7 +152,7 @@ def label_image(mask, image, tresholds, folder_path):
     return perfusion_mask
 
 
-def compute_stats(perf_arr, thresholds, spacing, dims, outdir):
+def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
     # first digit is the purfusion zone, second digit (units) is the lung
 
     label_00 = np.count_nonzero(perf_arr == 0)
@@ -163,8 +163,12 @@ def compute_stats(perf_arr, thresholds, spacing, dims, outdir):
     label_22 = np.count_nonzero(perf_arr == 22)
     label_32 = np.count_nonzero(perf_arr == 32)
 
-    tot_vol_left = label_11 + label_21 + label_31
-    tot_vol_right = label_12 + label_22 + label_32
+    if ignoreHighThreshold:
+        tot_vol_left = label_11 + label_21
+        tot_vol_right = label_12 + label_22
+    else:
+        tot_vol_left = label_11 + label_21 + label_31
+        tot_vol_right = label_12 + label_22 + label_32
 
     print(tot_vol_left, tot_vol_right)
 
@@ -217,6 +221,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Extract lungs from a given image and store output stats in a csv file"
+    )
+
+    parser.add_argument(
+        "--ignore_high_threshold",
+        action="store_true",
+        help="do not consider label 3 in total",
     )
 
     parser.add_argument(
@@ -273,7 +283,7 @@ if __name__ == "__main__":
     # compute volumes
     compute_stats(
         perfusion_mask,
-        args.thresholds,
+        args.ignore_high_threshold,
         image.GetSpacing(),
         image.GetSize(),
         args.outdir,
