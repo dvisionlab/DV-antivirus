@@ -63,6 +63,7 @@ To run the complete workflow (lungs extraction & stats analysis) on a folder tha
 > --dicomdir : followed by the path to the input folder  
 > --outdir : followed by the path to the output folder  
 > [optional] --thresholds : followed by the three thresholds divided by spaces (lower_bound, threshold, upper_bound), eg -1000 -920 -770
+> [optional] --ignore_high_threshold : if the label 3 (over high threshold) volume should be included in lungs total volume [default **false**]
 
 ### Lung segmentation & values extraction
 
