@@ -7,48 +7,7 @@ import torch
 import argparse
 import time
 
-from utils import getImageSeriesId, readImage, dicom2nrrd
-
-# OLD, SLOW METHOD
-# def label_mask_1(image, mask, thresholds):
-#     t1_low = thresholds[0]
-#     t2_low = thresholds[1]
-#     t1_high = thresholds[1]
-#     t2_high = thresholds[2]
-
-#     pxs = mask.shape[0] * mask.shape[1] * mask.shape[2]
-#     perfusion_mask = np.zeros(mask.shape)
-
-#     # for k in range(mask.shape[0]): #TODO restore
-#     for k in range(100, 110):
-#         print("slice >>", k, " // ", mask.shape[0])  # TODO restore
-#         sum_slice = np.sum(mask[k])
-#         if sum_slice == 0:
-#             continue
-#         for j in range(mask.shape[1]):
-#             for i in range(mask.shape[2]):
-#                 pix = image.GetPixel(i, j, k)
-#                 mask_val = mask[k, j, i]
-#                 if mask_val == 0:
-#                     continue
-#                 elif mask_val > 0 and pix < t1_low:
-#                     perfusion_mask[k, j, i] = 0
-#                 elif mask_val == 1 and pix <= t2_low:
-#                     perfusion_mask[k, j, i] = 11
-#                 elif mask_val == 1 and pix <= t2_high:
-#                     perfusion_mask[k, j, i] = 21
-#                 elif mask_val == 1 and pix > t2_high:
-#                     perfusion_mask[k, j, i] = 31
-#                 elif mask_val == 2 and pix <= t2_low:
-#                     perfusion_mask[k, j, i] = 12
-#                 elif mask_val == 2 and pix <= t2_high:
-#                     perfusion_mask[k, j, i] = 22
-#                 elif mask_val == 2 and pix > t2_high:
-#                     perfusion_mask[k, j, i] = 32
-#                 else:
-#                     print(k, j, i)
-
-#     return perfusion_mask
+from utils import dicom2nrrd
 
 
 def label_mask(image, mask, thresholds):
@@ -62,6 +21,8 @@ def label_mask(image, mask, thresholds):
 
     image_arr = sitk.GetArrayFromImage(image)
 
+    # assign a label based on original value & thresholds & side
+    # first digit is the purfusion zone, second digit (units) is the lung
     # !!! don't touch the order !!! highest threshold first
     perfusion_mask[(mask == 1) & (image_arr > t2_high)] = 31
     perfusion_mask[(mask == 1) & (image_arr <= t2_high)] = 21
@@ -104,6 +65,7 @@ def do_prediction(input_image, force_cpu, dev=False):
     toc = time.time()
     print("erosion:", toc - tic)
 
+    # prepare output image
     spacing = input_image.GetSpacing()
     direction = input_image.GetDirection()
     origin = input_image.GetOrigin()
@@ -136,6 +98,7 @@ def label_image(mask, image, tresholds, folder_path):
 
     sitk.WriteImage(out_img, os.path.join(folder_path, "lung_mask_palette.nrrd"))
 
+    # write pulmonary-only image for debug
     # apply lung mask to original image and set background to -1000
     image_arr = sitk.GetArrayFromImage(image)
     mask[mask == 2] = 1
@@ -153,9 +116,9 @@ def label_image(mask, image, tresholds, folder_path):
 
 
 def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
-    # first digit is the purfusion zone, second digit (units) is the lung
 
-    label_00 = np.count_nonzero(perf_arr == 0)
+    # sum by label
+    # first digit is the purfusion zone, second digit (units) is the lung
     label_11 = np.count_nonzero(perf_arr == 11)  # low perf left lung
     label_21 = np.count_nonzero(perf_arr == 21)
     label_31 = np.count_nonzero(perf_arr == 31)
@@ -163,6 +126,7 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
     label_22 = np.count_nonzero(perf_arr == 22)
     label_32 = np.count_nonzero(perf_arr == 32)
 
+    # compute total volume for each side
     if ignoreHighThreshold:
         tot_vol_left = label_11 + label_21
         tot_vol_right = label_12 + label_22
@@ -172,18 +136,22 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
 
     print(tot_vol_left, tot_vol_right)
 
+    # assign low perfusion volume
     low_perf_vol_left = label_11
     low_perf_vol_right = label_12
 
     print(low_perf_vol_left, low_perf_vol_right)
 
+    # compute low perfusion volume percentage
     perc_low_perf_left = (low_perf_vol_left / tot_vol_left) * 100
     perc_low_perf_right = (low_perf_vol_right / tot_vol_right) * 100
 
     print(perc_low_perf_left, perc_low_perf_right)
 
+    # compute conversion factor n_of_px -> volume
     conversion_factor = spacing[0] * spacing[1] * spacing[2]
 
+    # write output csv
     file_path = os.path.join(outdir, "./output.csv")
     with open(file_path, mode="w+") as csv_file:
         writer = csv.writer(
@@ -217,8 +185,8 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
 
 
 if __name__ == "__main__":
-    # init arg parser
 
+    # init arg parser
     parser = argparse.ArgumentParser(
         description="Extract lungs from a given image and store output stats in a csv file"
     )
@@ -263,7 +231,7 @@ if __name__ == "__main__":
 
     tic = time.perf_counter()
 
-    # create temp folder
+    # create temporary folder
     temp_path = os.path.join(os.getcwd(), "temp/")
     os.makedirs(temp_path, exist_ok=True)
 
@@ -273,11 +241,11 @@ if __name__ == "__main__":
     # convert input dicom to nrrd
     image = dicom2nrrd(path_image, nrrd_image_path)
 
-    # run segmentation (or load a mask)
+    # run segmentation with lungmask (or load a mask)
     segmentation = do_prediction(image, args.force_cpu, args.load_mask)
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
-    # extract only values inside the target palette
+    # extract only values inside the target palette (thresholds)
     perfusion_mask = label_image(segmentation_arr, image, args.thresholds, args.outdir)
 
     # compute volumes
