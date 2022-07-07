@@ -328,7 +328,7 @@ def organize_series(study_folder_path):
 
         # get all series id into a list
         for f in range(len(files)):
-            print("file", f, "/", len(files))
+            print("file", f + 1, "/", len(files))
             path = os.path.join(root, files[f])
             getImageSeriesId(path, series_list, desc_list)
 
