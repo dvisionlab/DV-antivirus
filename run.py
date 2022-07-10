@@ -61,7 +61,7 @@ def maskToCSV(mask, image, tresholds, folder_path):
         writer.writerow(["valore con mdc", "polmone", "perfusion"])
 
         for k in range(mask.shape[0]):
-            print(">>", k, " // ", mask.shape[0])
+            print(">>", k + 1, " // ", mask.shape[0])
             for j in range(mask.shape[1]):
                 for i in range(mask.shape[2]):
                     pix = image.GetPixel(i, j, k)
