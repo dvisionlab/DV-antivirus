@@ -316,7 +316,7 @@ def organize_series(study_folder_path):
     print("Reading... ", study_folder_path)
 
     # read all the files in the directory (just the metadata)
-    for (root, dirs, files) in os.walk(study_folder_path):
+    for (root, dirs, files) in os.walk(study_folder_path, onerror = lambda err: print(err)):
         print("root", root)
         print("dirs", len(dirs))
         print("files", len(files))
@@ -328,7 +328,7 @@ def organize_series(study_folder_path):
 
         # get all series id into a list
         for f in range(len(files)):
-            print("file", f, "/", len(files))
+            print("file", f + 1, "/", len(files))
             path = os.path.join(root, files[f])
             getImageSeriesId(path, series_list, desc_list)
 

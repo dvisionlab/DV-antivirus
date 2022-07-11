@@ -30,8 +30,8 @@ That's all!
 ### Windows
 
 - Install [conda](https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe)
-  [non rimpiazzare il python di default,
-  non aggiungere nulla alle variabili d ambiente]
+  [don't replace default python,
+  don't add anything to the environment variables]
 - Install pytorch with `conda install pytorch torchvision cpuonly -c pytorch`
 - Install lungmask (see [its readme](https://github.com/JoHof/lungmask))
 - Install needed packages (see Pipfile) with `conda install` or `pip install`
