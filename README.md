@@ -21,7 +21,12 @@ In particular, at the moment the best results are obtained using images with con
 
 ## Installation
 
-### Linux
+### Prerequisites
+- Python3 
+- Pipenv
+- Git
+
+### Linux / WSL
 
 > pipenv install
 
