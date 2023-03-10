@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 1cm;
+    }
+
+    p {
+      text-align: center;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 90%;
+      border: 1px solid black;
+      margin: auto;
+    }
+
+    tr {
+      height: 46px;
+    }
+
+    td,
+    th {
+      padding: 0.6em;
+      width: 25%;
+      height: 3em;
+      border: 1px solid black;
+    }
+
+    img {
+      display: block;
+      margin: auto;
+      height: 100%;
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <p>&nbsp;</p>
+  <h2><strong>{{Titolo_tabella}}</strong></h2>
+  <table>
+    <tbody>
+      <tr>
+        <th>Description</th>
+        <th>Number of pixels</th>
+        <th>Volume [mm³]</th>
+        <th>Percentage</th>
+      </tr>
+      <tr>
+        <td>Total volume left</td>
+        <td>{{n_pix_1}}</td>
+        <td>{{vol_1}}</td>
+        <td>{{perc_1}}</td>
+      </tr>
+      <tr>
+        <td>Low perfusion volume left</td>
+        <td>{{n_pix_2}}</td>
+        <td>{{vol_2}}</td>
+        <td>{{perc_2}}</td>
+      </tr>
+      <tr>
+        <td>Total volume right</td>
+        <td>{{n_pix_3}}</td>
+        <td>{{vol_3}}</td>
+        <td>{{perc_3}}</td>
+      </tr>
+      <tr>
+        <td>Low perfusion volume right</td>
+        <td>{{n_pix_4}}</td>
+        <td>{{vol_4}}</td>
+        <td>{{perc_4}}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>&nbsp;</p>
+  <p>&nbsp;</p>
+  <p>
+    <img src="{{src}}" />
+  </p>
+</body>
+
+</html>

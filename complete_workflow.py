@@ -6,6 +6,9 @@ import csv
 import torch
 import argparse
 import time
+from matplotlib import pyplot as plt
+import jinja2
+from weasyprint import HTML
 
 from utils import dicom2nrrd
 
@@ -181,7 +184,164 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
             ]
         )
 
+    # write a pdf file
+    Titolo_tabella = "Summary"
+    src = "temp/histogram.png"
+
+    context = {'src': src,'Titolo_tabella': Titolo_tabella, 'n_pix_1': tot_vol_left, 'n_pix_2': low_perf_vol_left, 'n_pix_3': tot_vol_right, 'n_pix_4': low_perf_vol_right, 
+    'vol_1':tot_vol_left * conversion_factor, 'vol_2': low_perf_vol_left * conversion_factor, 'vol_3':tot_vol_right * conversion_factor, 'vol_4': low_perf_vol_right * conversion_factor, 
+    'perc_1': "", 'perc_2': perc_low_perf_left, 'perc_3': "", 'perc_4': perc_low_perf_right}
+
+
+    template_loader = jinja2.FileSystemLoader('./')
+    template_env = jinja2.Environment(loader=template_loader)
+
+    template = template_env.get_template("template_pdf.html")
+    output_text = template.render(context).replace("^3", "³")
+
+    with open('html_generated.html', 'w') as f:
+        f.write(output_text)
+
+    HTML('html_generated.html').write_pdf(outdir + "/" + 'summary.pdf')
+
     return
+
+
+def maskToCSV(mask, image, tresholds, folder_path):
+    mask = sitk.GetArrayFromImage(mask)
+
+    t1_low = tresholds[0]
+    t2_low = tresholds[1]
+    t1_high = tresholds[1]
+    t2_high = tresholds[2]
+
+    print("clean segmentation and write csv")
+
+    perfusion_mask = np.copy(mask)
+
+    file_path = os.path.join(folder_path, "hist_output.csv")
+    with open(file_path, mode="w+") as csv_file:
+        writer = csv.writer(
+            csv_file, delimiter=";", quotechar='"', quoting=csv.QUOTE_MINIMAL
+        )
+        writer.writerow(["valore con mdc", "polmone", "perfusion"])
+
+        for k in range(mask.shape[0]):
+            print(">>", k + 1, " // ", mask.shape[0])
+            for j in range(mask.shape[1]):
+                for i in range(mask.shape[2]):
+                    pix = image.GetPixel(i, j, k)
+                    if mask[k][j][i] == 0:
+                        continue
+                    elif mask[k][j][i] > 0 and pix < t1_low:
+                        perfusion_mask[k][j][i] = 0
+                        writer.writerow([pix, mask[k][j][i], perfusion_mask[k][j][i]])
+                    elif mask[k][j][i] > 0 and pix <= t2_low:
+                        perfusion_mask[k][j][i] = 10
+                        writer.writerow([pix, mask[k][j][i], perfusion_mask[k][j][i]])
+                    elif mask[k][j][i] > 0 and pix <= t2_high:
+                        perfusion_mask[k][j][i] = 20
+                        writer.writerow([pix, mask[k][j][i], perfusion_mask[k][j][i]])
+                    elif mask[k][j][i] > 0 and pix > t2_high:
+                        perfusion_mask[k][j][i] = 0
+                        writer.writerow([pix, mask[k][j][i], perfusion_mask[k][j][i]])
+
+
+
+def examine_threshold(csv_path, thresholds):
+    """
+    Examine a csv file.
+
+    Generate histogram (saved as png in the temp folder)
+
+    Parameters:
+    csv_path (string): path to .csv to analyze
+    thresholds (array): array in the form [lower_bound_value, threshold_value, high_bound_value]
+    """
+
+    print("Loading data...")
+    data = np.genfromtxt(csv_path, delimiter=";", dtype=int, names=True)
+    print("Data loaded.")
+    # define which is left/right
+    left_data = data[data["polmone"] == 1]
+    right_data = data[data["polmone"] == 2]
+    print("LEFT LUNG\tRIGHT LUNG")
+    print(len(left_data), "\t", len(right_data))
+
+    # select mdc column
+    left_data_mdc = left_data["valore_con_mdc"]
+    right_data_mdc = right_data["valore_con_mdc"]
+    # select data inside the thresholds
+    t1_low = thresholds[0]
+    t2_low = thresholds[1]
+    t1_high = thresholds[1]
+    t2_high = thresholds[2]
+    left_data_low = left_data_mdc[(t1_low <= left_data_mdc) & (left_data_mdc < t2_low)]
+    right_data_low = right_data_mdc[
+        (t1_low <= right_data_mdc) & (right_data_mdc < t2_low)
+    ]
+    left_data_high = left_data_mdc[
+        (t1_high <= left_data_mdc) & (left_data_mdc < t2_high)
+    ]
+    right_data_high = right_data_mdc[
+        (t1_high <= right_data_mdc) & (right_data_mdc < t2_high)
+    ]
+
+    print(len(left_data_low), "\t", len(left_data_high))
+    print(len(right_data_low), "\t", len(right_data_high))
+
+    print(left_data_low)
+
+    # compute ratio on total volume
+    left_ratio = len(left_data_low) / (len(left_data_low) + len(left_data_high))
+    right_ratio = len(right_data_low) / (len(right_data_low) + len(right_data_high))
+    print(left_ratio, "\t", right_ratio)
+
+    # define bins
+    start = t1_low
+    stop = t2_high
+    step = 1
+    bins = range(int(start), int(stop) + 2, int(step))
+    print("Hist bins input:", start, stop, step, bins)
+    fig, axes = plt.subplots(1, 2, sharey=True, figsize=(25, 10))
+
+    # LEFT
+    nl, binsl, patchesl = axes[0].hist(
+        left_data_mdc, bins, facecolor="blue", alpha=0.3, label="high perfusion"
+    )
+    axes[0].hist(
+        left_data_low, bins, facecolor="blue", alpha=0.9, label="low perfusion"
+    )
+    # RIGHT
+    nr, binsr, patchesr = axes[1].hist(
+        right_data_mdc, bins, facecolor="red", alpha=0.3, label="high perfusion"
+    )
+    axes[1].hist(
+        right_data_low, bins, facecolor="red", alpha=0.9, label="low perfusion"
+    )
+
+    # CHARTS SETUP
+    axes[0].legend(loc="upper right")
+    axes[1].legend(loc="upper right")
+    fig.suptitle(
+        "Image with mc, Arterial 1mm \n Range: {} / {} \n Threshold: {}".format(
+            thresholds[0], thresholds[2], thresholds[1]
+        )
+    )
+
+    y_max = int(max(nl.max(), nr.max()))
+
+    yticks = range(0, y_max, 100000)
+    axes[0].set_title("Left lung low perfusion volume = %s" % left_ratio)
+    axes[0].set_xticks(bins)
+    axes[0].set_yticks(yticks)
+    axes[1].set_title("Right lung low perfusion volume = %s" % right_ratio)
+    axes[1].set_xticks(bins)
+    axes[1].set_yticks(yticks)
+
+    # save hist as png
+    plt.savefig("temp/histogram.png")
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -231,6 +391,9 @@ if __name__ == "__main__":
 
     tic = time.perf_counter()
 
+    #create the output folder does not exits
+    os.makedirs(args.outdir, exist_ok=True)
+
     # create temporary folder
     temp_path = os.path.join(os.getcwd(), "temp/")
     os.makedirs(temp_path, exist_ok=True)
@@ -247,6 +410,10 @@ if __name__ == "__main__":
 
     # extract only values inside the target palette (thresholds)
     perfusion_mask = label_image(segmentation_arr, image, args.thresholds, args.outdir)
+
+    # generate the histogram
+    maskToCSV(segmentation, image, args.thresholds, temp_path)
+    examine_threshold(temp_path + "hist_output.csv", args.thresholds)
 
     # compute volumes
     compute_stats(
