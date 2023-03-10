@@ -185,7 +185,6 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
         )
 
     # write a pdf file
-
     Titolo_tabella = "Summary"
     src = "temp/histogram.png"
 
@@ -391,6 +390,9 @@ if __name__ == "__main__":
     path_image = args.dicomdir
 
     tic = time.perf_counter()
+
+    #create the output folder does not exits
+    os.makedirs(args.outdir, exist_ok=True)
 
     # create temporary folder
     temp_path = os.path.join(os.getcwd(), "temp/")
