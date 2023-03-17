@@ -160,7 +160,7 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
         writer = csv.writer(
             csv_file, delimiter=";", quotechar='"', quoting=csv.QUOTE_MINIMAL
         )
-        writer.writerow(["desc", "n_of_px", "vol [mm^3]" "percentage"])
+        writer.writerow(["desc", "n_of_px", "vol [mm^3]", "percentage"])
         writer.writerow(
             ["tot_vol_left", tot_vol_left, tot_vol_left * conversion_factor, ""]
         )
@@ -391,7 +391,7 @@ if __name__ == "__main__":
 
     tic = time.perf_counter()
 
-    #create the output folder does not exits
+    #create the output folder (if it does not exit)
     os.makedirs(args.outdir, exist_ok=True)
 
     # create temporary folder
