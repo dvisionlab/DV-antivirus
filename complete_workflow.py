@@ -14,10 +14,10 @@ from utils import dicom2nrrd
 
 
 def label_mask(image, mask, thresholds):
-    t1_low = thresholds[0]
-    t2_low = thresholds[1]
-    t1_high = thresholds[1]
-    t2_high = thresholds[2]
+    t1_low = thresholds[0]   # -1000
+    t2_low = thresholds[1]   # -920
+    t1_high = thresholds[1]  # -920
+    t2_high = thresholds[2]  # -770
 
     pxs = mask.shape[0] * mask.shape[1] * mask.shape[2]
     perfusion_mask = np.zeros(mask.shape)
@@ -27,15 +27,25 @@ def label_mask(image, mask, thresholds):
     # assign a label based on original value & thresholds & side
     # first digit is the purfusion zone, second digit (units) is the lung
     # !!! don't touch the order !!! highest threshold first
-    perfusion_mask[(mask == 1) & (image_arr > t2_high)] = 31
-    perfusion_mask[(mask == 1) & (image_arr <= t2_high)] = 21
-    perfusion_mask[(mask == 1) & (image_arr <= t2_low)] = 11
-    perfusion_mask[(mask == 2) & (image_arr > t2_high)] = 32
-    perfusion_mask[(mask == 2) & (image_arr <= t2_high)] = 22
-    perfusion_mask[(mask == 2) & (image_arr <= t2_low)] = 12
-    perfusion_mask[(mask > 0) & (image_arr < t1_low)] = 0
+    perfusion_mask[(mask == 1) & (image_arr > t2_high)] = 31  # maggiore di -770
+    perfusion_mask[(mask == 1) & (image_arr <= t2_high)] = 21 # minore di/uguale a -770   
+    perfusion_mask[(mask == 1) & (image_arr <= t2_low)] = 11  # minore di/uguale a -920
+    perfusion_mask[(mask == 2) & (image_arr > t2_high)] = 32  # maggiore di -770
+    perfusion_mask[(mask == 2) & (image_arr <= t2_high)] = 22 # minore di/uguale a -770
+    perfusion_mask[(mask == 2) & (image_arr <= t2_low)] = 12  # minore di/uguale a -920
+    perfusion_mask[(mask > 0) & (image_arr < t1_low)] = 0 
 
-    return perfusion_mask
+
+    #perfusion zone that ranges from -1000 to -770 and from -1000 to -920
+    perf_mask2 = np.zeros(mask.shape)
+    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 41  #-1000/-770 sx
+    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 51   #-1000/-920 sx
+    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 42  #-1000/-770 dx
+    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 52   #-1000/-920 dx
+
+
+
+    return perfusion_mask, perf_mask2
 
 
 def do_prediction(input_image, force_cpu, dev=False):
@@ -118,7 +128,7 @@ def label_image(mask, image, tresholds, folder_path):
     return perfusion_mask
 
 
-def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
+def compute_stats(perf_arr, perf_arr2, ignoreHighThreshold, spacing, dims, outdir):
 
     # sum by label
     # first digit is the purfusion zone, second digit (units) is the lung
@@ -128,6 +138,13 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
     label_12 = np.count_nonzero(perf_arr == 12)  # low perf right lung
     label_22 = np.count_nonzero(perf_arr == 22)
     label_32 = np.count_nonzero(perf_arr == 32)
+
+    
+    labels_41 = np.count_nonzero(perf_arr2 == 41) #left lung from -1000 to -770
+    labels_51 = np.count_nonzero(perf_arr2 == 51) #left lung from -1000 to -920
+    labels_42 = np.count_nonzero(perf_arr2 == 42) #right lung from -1000 to -770
+    labels_52 = np.count_nonzero(perf_arr2 == 52) #right lung from -1000 to -920
+
 
     # compute total volume for each side
     if ignoreHighThreshold:
@@ -143,11 +160,24 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
     low_perf_vol_left = label_11
     low_perf_vol_right = label_12
 
+    #assign perfusion range (-1000, -770) and (-1000,-920)
+    left_1000_770 = labels_41
+    left_1000_920 = labels_51
+    right_1000_770 = labels_42
+    right_1000_920 = labels_52
+
     print(low_perf_vol_left, low_perf_vol_right)
 
     # compute low perfusion volume percentage
     perc_low_perf_left = (low_perf_vol_left / tot_vol_left) * 100
     perc_low_perf_right = (low_perf_vol_right / tot_vol_right) * 100
+
+    #compute volume percentage range (-1000, -770) and (-1000,-920)
+    perc_left_1000_770 = (left_1000_770 / tot_vol_left) * 100
+    perc_left_1000_920 = (left_1000_920 / tot_vol_left) * 100
+    perc_right_1000_770 = (right_1000_770 / tot_vol_right) * 100
+    perc_right_1000_920 = (right_1000_920 / tot_vol_right) * 100
+
 
     print(perc_low_perf_left, perc_low_perf_right)
 
@@ -183,14 +213,47 @@ def compute_stats(perf_arr, ignoreHighThreshold, spacing, dims, outdir):
                 perc_low_perf_right,
             ]
         )
+        writer.writerow(
+            [
+                "left_1000_770",
+                left_1000_770,
+                left_1000_770 * conversion_factor,
+                perc_left_1000_770,
+            ]
+        )
+        writer.writerow(
+            [
+                "left_1000_770",
+                left_1000_920,
+                left_1000_920 * conversion_factor,
+                perc_left_1000_920,
+            ]
+        )
+        writer.writerow(
+            [
+                "right_1000_770",
+                right_1000_770,
+                right_1000_770 * conversion_factor,
+                perc_right_1000_770,
+            ]
+        )
+        writer.writerow(
+            [
+                "right_1000_920",
+                right_1000_920,
+                right_1000_920 * conversion_factor,
+                perc_right_1000_920,
+            ]
+        )
+
 
     # write a pdf file
     Titolo_tabella = "Summary"
     src = "temp/histogram.png"
 
-    context = {'src': src,'Titolo_tabella': Titolo_tabella, 'n_pix_1': tot_vol_left, 'n_pix_2': low_perf_vol_left, 'n_pix_3': tot_vol_right, 'n_pix_4': low_perf_vol_right, 
-    'vol_1':tot_vol_left * conversion_factor, 'vol_2': low_perf_vol_left * conversion_factor, 'vol_3':tot_vol_right * conversion_factor, 'vol_4': low_perf_vol_right * conversion_factor, 
-    'perc_1': "", 'perc_2': perc_low_perf_left, 'perc_3': "", 'perc_4': perc_low_perf_right}
+    context = {'src': src,'Titolo_tabella': Titolo_tabella, 'n_pix_1': tot_vol_left, 'n_pix_2': low_perf_vol_left, 'n_pix_3': tot_vol_right, 'n_pix_4': low_perf_vol_right, 'n_pix_5': left_1000_770, 'n_pix_6': left_1000_920, 'n_pix_7': right_1000_770, 'n_pix_8': right_1000_920,
+    'vol_1':tot_vol_left * conversion_factor, 'vol_2': low_perf_vol_left * conversion_factor, 'vol_3':tot_vol_right * conversion_factor, 'vol_4': low_perf_vol_right * conversion_factor, 'vol_5': left_1000_770 * conversion_factor, 'vol_6': left_1000_920 * conversion_factor, 'vol_7': right_1000_770 * conversion_factor, 'vol_8': right_1000_920 * conversion_factor,
+    'perc_1': "", 'perc_2': perc_low_perf_left, 'perc_3': "", 'perc_4': perc_low_perf_right, 'perc_5': perc_left_1000_770, 'perc_6': perc_left_1000_920, 'perc_7': perc_right_1000_770, 'perc_8': perc_right_1000_920}
 
 
     template_loader = jinja2.FileSystemLoader('./')
@@ -272,20 +335,20 @@ def examine_threshold(csv_path, thresholds):
     left_data_mdc = left_data["valore_con_mdc"]
     right_data_mdc = right_data["valore_con_mdc"]
     # select data inside the thresholds
-    t1_low = thresholds[0]
+    t1_low = thresholds[0] 
     t2_low = thresholds[1]
-    t1_high = thresholds[1]
-    t2_high = thresholds[2]
-    left_data_low = left_data_mdc[(t1_low <= left_data_mdc) & (left_data_mdc < t2_low)]
+    t1_high = thresholds[1] 
+    t2_high = thresholds[2] 
+    left_data_low = left_data_mdc[(t1_low <= left_data_mdc) & (left_data_mdc < t2_low)] 
     right_data_low = right_data_mdc[
         (t1_low <= right_data_mdc) & (right_data_mdc < t2_low)
-    ]
+    ] 
     left_data_high = left_data_mdc[
         (t1_high <= left_data_mdc) & (left_data_mdc < t2_high)
-    ]
+    ] 
     right_data_high = right_data_mdc[
         (t1_high <= right_data_mdc) & (right_data_mdc < t2_high)
-    ]
+    ] 
 
     print(len(left_data_low), "\t", len(left_data_high))
     print(len(right_data_low), "\t", len(right_data_high))
@@ -378,7 +441,7 @@ if __name__ == "__main__":
         nargs="+",
         type=float,
         help="array of tresholds",
-        default=[-1000, -930, -770],
+        default=[-1000, -920, -770],
     )
 
     parser.add_argument(
@@ -409,7 +472,7 @@ if __name__ == "__main__":
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette (thresholds)
-    perfusion_mask = label_image(segmentation_arr, image, args.thresholds, args.outdir)
+    perfusion_mask, perf_mask2 = label_image(segmentation_arr, image, args.thresholds, args.outdir)
 
     # generate the histogram
     maskToCSV(segmentation, image, args.thresholds, temp_path)
@@ -417,7 +480,7 @@ if __name__ == "__main__":
 
     # compute volumes
     compute_stats(
-        perfusion_mask,
+        perfusion_mask, perf_mask2,
         args.ignore_high_threshold,
         image.GetSpacing(),
         image.GetSize(),
