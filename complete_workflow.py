@@ -27,25 +27,28 @@ def label_mask(image, mask, thresholds):
     # assign a label based on original value & thresholds & side
     # first digit is the purfusion zone, second digit (units) is the lung
     # !!! don't touch the order !!! highest threshold first
-    perfusion_mask[(mask == 1) & (image_arr > t2_high)] = 31  # maggiore di -770
-    perfusion_mask[(mask == 1) & (image_arr <= t2_high)] = 21 # minore di/uguale a -770   
-    perfusion_mask[(mask == 1) & (image_arr <= t2_low)] = 11  # minore di/uguale a -920
-    perfusion_mask[(mask == 2) & (image_arr > t2_high)] = 32  # maggiore di -770
-    perfusion_mask[(mask == 2) & (image_arr <= t2_high)] = 22 # minore di/uguale a -770
-    perfusion_mask[(mask == 2) & (image_arr <= t2_low)] = 12  # minore di/uguale a -920
-    perfusion_mask[(mask > 0) & (image_arr < t1_low)] = 0 
-
+    perfusion_mask[(mask == 1) & (image_arr > t2_high)] = 31  # less than -770
+    perfusion_mask[(mask == 1) & (image_arr <= t2_high)] = 21 # less than/equal to -770   
+    perfusion_mask[(mask == 1) & (image_arr <= t2_low)] = 11  # less than/equal to -920
+    perfusion_mask[(mask == 2) & (image_arr > t2_high)] = 32  # greater than -770
+    perfusion_mask[(mask == 2) & (image_arr <= t2_high)] = 22 # less than/equal to -770
+    perfusion_mask[(mask == 2) & (image_arr <= t2_low)] = 12  # less than/equal to -920
+    perfusion_mask[(mask > 0) & (image_arr < t1_low)] = 0
 
     #perfusion zone that ranges from -1000 to -770 and from -1000 to -920
     perf_mask2 = np.zeros(mask.shape)
-    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 41  #-1000/-770 sx
-    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 51   #-1000/-920 sx
-    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 42  #-1000/-770 dx
-    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 52   #-1000/-920 dx
+    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 41  #-1000/-770 left
+    labels_41 = np.count_nonzero(perf_mask2 == 41)
+    perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 51   #-1000/-920 left
+    labels_51 = np.count_nonzero(perf_mask2 == 51)
+    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 42  #-1000/-770 right
+    labels_42 = np.count_nonzero(perf_mask2 == 42)
+    perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 52   #-1000/-920 right
+    labels_52 = np.count_nonzero(perf_mask2 == 52)
 
+    perf_zones = [labels_41, labels_51, labels_42, labels_52]
 
-
-    return perfusion_mask, perf_mask2
+    return perfusion_mask, perf_zones
 
 
 def do_prediction(input_image, force_cpu, dev=False):
@@ -96,7 +99,7 @@ def do_prediction(input_image, force_cpu, dev=False):
 def label_image(mask, image, tresholds, folder_path):
     print("labeling image with thresholds: ", tresholds)
 
-    perfusion_mask = label_mask(image, mask, tresholds)
+    perfusion_mask, perf_zones = label_mask(image, mask, tresholds)
 
     spacing = image.GetSpacing()
     direction = image.GetDirection()
@@ -125,10 +128,10 @@ def label_image(mask, image, tresholds, folder_path):
     lungs.SetOrigin(origin)
     sitk.WriteImage(lungs, os.path.join(folder_path, "lungs.nrrd"))
 
-    return perfusion_mask
+    return perfusion_mask, perf_zones
 
 
-def compute_stats(perf_arr, perf_arr2, ignoreHighThreshold, spacing, dims, outdir):
+def compute_stats(perf_arr, perf_zones_list, ignoreHighThreshold, spacing, dims, outdir):
 
     # sum by label
     # first digit is the purfusion zone, second digit (units) is the lung
@@ -138,13 +141,6 @@ def compute_stats(perf_arr, perf_arr2, ignoreHighThreshold, spacing, dims, outdi
     label_12 = np.count_nonzero(perf_arr == 12)  # low perf right lung
     label_22 = np.count_nonzero(perf_arr == 22)
     label_32 = np.count_nonzero(perf_arr == 32)
-
-    
-    labels_41 = np.count_nonzero(perf_arr2 == 41) #left lung from -1000 to -770
-    labels_51 = np.count_nonzero(perf_arr2 == 51) #left lung from -1000 to -920
-    labels_42 = np.count_nonzero(perf_arr2 == 42) #right lung from -1000 to -770
-    labels_52 = np.count_nonzero(perf_arr2 == 52) #right lung from -1000 to -920
-
 
     # compute total volume for each side
     if ignoreHighThreshold:
@@ -161,10 +157,10 @@ def compute_stats(perf_arr, perf_arr2, ignoreHighThreshold, spacing, dims, outdi
     low_perf_vol_right = label_12
 
     #assign perfusion range (-1000, -770) and (-1000,-920)
-    left_1000_770 = labels_41
-    left_1000_920 = labels_51
-    right_1000_770 = labels_42
-    right_1000_920 = labels_52
+    left_1000_770 = perf_zones[0] 
+    left_1000_920 = perf_zones[1] 
+    right_1000_770 = perf_zones[2] 
+    right_1000_920 = perf_zones[3] 
 
     print(low_perf_vol_left, low_perf_vol_right)
 
@@ -472,7 +468,7 @@ if __name__ == "__main__":
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette (thresholds)
-    perfusion_mask, perf_mask2 = label_image(segmentation_arr, image, args.thresholds, args.outdir)
+    perfusion_mask, perf_zones = label_image(segmentation_arr, image, args.thresholds, args.outdir)
 
     # generate the histogram
     maskToCSV(segmentation, image, args.thresholds, temp_path)
@@ -480,7 +476,7 @@ if __name__ == "__main__":
 
     # compute volumes
     compute_stats(
-        perfusion_mask, perf_mask2,
+        perfusion_mask, perf_zones,
         args.ignore_high_threshold,
         image.GetSpacing(),
         image.GetSize(),
