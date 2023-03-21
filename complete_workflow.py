@@ -36,13 +36,19 @@ def label_mask(image, mask, thresholds):
     perfusion_mask[(mask > 0) & (image_arr < t1_low)] = 0
 
     #perfusion zone that ranges from -1000 to -770 and from -1000 to -920
-    perf_mask2 = np.zeros(mask.shape)
+    perf_mask2 = np.zeros(mask.shape)  
     perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 41  #-1000/-770 left
     labels_41 = np.count_nonzero(perf_mask2 == 41)
+    
+    perf_mask2 = np.zeros(mask.shape)
     perf_mask2[(mask==1)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 51   #-1000/-920 left
     labels_51 = np.count_nonzero(perf_mask2 == 51)
+    
+    perf_mask2 = np.zeros(mask.shape)
     perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_high)] = 42  #-1000/-770 right
     labels_42 = np.count_nonzero(perf_mask2 == 42)
+
+    perf_mask2 = np.zeros(mask.shape)
     perf_mask2[(mask==2)&(t1_low <= image_arr)&(image_arr <= t2_low)] = 52   #-1000/-920 right
     labels_52 = np.count_nonzero(perf_mask2 == 52)
 
