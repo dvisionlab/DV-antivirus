@@ -1,7 +1,7 @@
 import numpy as np
 import SimpleITK as sitk
 
-# creazione dell'immagine
+# image generation
 test_image_array = np.zeros((10, 10, 10))
 
 for i in range(5):
@@ -17,7 +17,7 @@ sitk.WriteImage(test_image, "test_image.nrrd")
 print(test_image_array)
 
 
-# creazione della segmentazione per distinguire polmone destro e sinistro
+# segmentation generation (used to distinguish between left and right lung)
 test_segm_array = np.zeros((10, 10, 10))
 
 for i in range(10):

@@ -503,7 +503,7 @@ if __name__ == "__main__":
 
     # convert input dicom to nrrd
     if path_image.endswith(".nrrd"):
-        # test con una nrrd di prova
+        # test with a dummy nrrd to evaluate the correctness of the statistics
         image = sitk.ReadImage(path_image)
         segm = sitk.ReadImage("./test_segm.nrrd")
         perf_mask, perf_zones = label_image(
