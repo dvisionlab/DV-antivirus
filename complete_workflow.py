@@ -293,7 +293,7 @@ def compute_stats(
     template_loader = jinja2.FileSystemLoader("./")
     template_env = jinja2.Environment(loader=template_loader)
 
-    template = template_env.get_template("template_pdf.html")
+    template = template_env.get_template("./DV_antivirus/template_pdf.html")
     output_text = template.render(context).replace("^3", "³")
 
     with open("html_generated.html", "w") as f:

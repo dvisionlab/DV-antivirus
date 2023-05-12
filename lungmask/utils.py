@@ -207,12 +207,12 @@ def postrocessing(label_image, spare=[]):
     # will hold mapping from regionlabels to original labels
     region_to_lobemap = np.zeros((len(regionlabels) + 1,), dtype=np.uint8)
     for r in regions:
-        if r.area > origlabels_maxsub[r.max_intensity]:
-            origlabels_maxsub[r.max_intensity] = r.area
-            region_to_lobemap[r.label] = r.max_intensity
+        if r.area > origlabels_maxsub[int(r.max_intensity)]:
+            origlabels_maxsub[int(r.max_intensity)] = r.area
+            region_to_lobemap[int(r.label)] = r.max_intensity
 
     for r in tqdm(regions):
-        if r.area < origlabels_maxsub[r.max_intensity] or region_to_lobemap[r.label] in spare:
+        if r.area < origlabels_maxsub[int(r.max_intensity)] or region_to_lobemap[int(r.label)] in spare:
             bb = bbox_3D(regionmask == r.label)
             sub = regionmask[bb[0]:bb[1], bb[2]:bb[3], bb[4]:bb[5]]
             dil = ndimage.binary_dilation(sub == r.label)
@@ -226,10 +226,9 @@ def postrocessing(label_image, spare=[]):
                     mapto = n
                     myarea = r.area
             regionmask[regionmask == r.label] = mapto
-            if regions[regionlabels.index(mapto)].area == origlabels_maxsub[
-                regions[regionlabels.index(mapto)].max_intensity]:
-                origlabels_maxsub[regions[regionlabels.index(mapto)].max_intensity] += myarea
-            regions[regionlabels.index(mapto)].__dict__['_cache']['area'] += myarea
+            if regions[int(regionlabels.index(mapto))].area == origlabels_maxsub[int(regions[regionlabels.index(mapto)].max_intensity)]:
+                origlabels_maxsub[int(regions[regionlabels.index(mapto)].max_intensity)] += myarea
+            regions[int(regionlabels.index(mapto))].__dict__['_cache']['area'] += myarea
 
     outmask_mapped = region_to_lobemap[regionmask]
 
