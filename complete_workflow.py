@@ -12,6 +12,9 @@ from weasyprint import HTML
 
 from utils import dicom2nrrd
 
+# 1 -> left lung on the screen, but right lung in the CT (is the actual right patient's lung)
+# 2 -> right lung on the screen, but left lung in the CT (is the actual left patient's lung)
+
 
 def label_mask(image, mask, thresholds):
     t1_low = thresholds[0]  # -1000
@@ -39,25 +42,25 @@ def label_mask(image, mask, thresholds):
     perf_mask2 = np.zeros(mask.shape)
     perf_mask2[
         (mask == 1) & (t1_low <= image_arr) & (image_arr <= t2_high)
-    ] = 41  # -1000/-770 left
+    ] = 41  # -1000/-770 right
     labels_41 = np.count_nonzero(perf_mask2 == 41)
 
     perf_mask2 = np.zeros(mask.shape)
     perf_mask2[
         (mask == 1) & (t1_low <= image_arr) & (image_arr <= t2_low)
-    ] = 51  # -1000/-920 left
+    ] = 51  # -1000/-920 right
     labels_51 = np.count_nonzero(perf_mask2 == 51)
 
     perf_mask2 = np.zeros(mask.shape)
     perf_mask2[
         (mask == 2) & (t1_low <= image_arr) & (image_arr <= t2_high)
-    ] = 42  # -1000/-770 right
+    ] = 42  # -1000/-770 left
     labels_42 = np.count_nonzero(perf_mask2 == 42)
 
     perf_mask2 = np.zeros(mask.shape)
     perf_mask2[
         (mask == 2) & (t1_low <= image_arr) & (image_arr <= t2_low)
-    ] = 52  # -1000/-920 right
+    ] = 52  # -1000/-920 left
     labels_52 = np.count_nonzero(perf_mask2 == 52)
 
     perf_zones = [labels_41, labels_51, labels_42, labels_52]
@@ -90,10 +93,10 @@ def do_prediction(input_image, force_cpu, dev=False, write_image=True):
     eroder = sitk.BinaryErodeImageFilter()
     eroder.SetKernelType(sitk.sitkBall)
     eroder.SetKernelRadius(1)
-    # lung 1
+    # lung 1 (right)
     eroder.SetForegroundValue(1)
     out_img = eroder.Execute(out_img)
-    # lung 2
+    # lung 2 (left)
     eroder.SetForegroundValue(2)
     out_img = eroder.Execute(out_img)
     toc = time.time()
@@ -155,32 +158,32 @@ def compute_stats(
 ):
     # sum by label
     # first digit is the purfusion zone, second digit (units) is the lung
-    label_11 = np.count_nonzero(perf_arr == 11)  # low perf left lung
+    label_11 = np.count_nonzero(perf_arr == 11)  # low perf right lung
     label_21 = np.count_nonzero(perf_arr == 21)
     label_31 = np.count_nonzero(perf_arr == 31)
-    label_12 = np.count_nonzero(perf_arr == 12)  # low perf right lung
+    label_12 = np.count_nonzero(perf_arr == 12)  # low perf left lung
     label_22 = np.count_nonzero(perf_arr == 22)
     label_32 = np.count_nonzero(perf_arr == 32)
 
     # compute total volume for each side
     if ignoreHighThreshold:
-        tot_vol_left = label_11 + label_21
-        tot_vol_right = label_12 + label_22
+        tot_vol_right = label_11 + label_21
+        tot_vol_left = label_12 + label_22
     else:
-        tot_vol_left = label_11 + label_21 + label_31
-        tot_vol_right = label_12 + label_22 + label_32
+        tot_vol_right = label_11 + label_21 + label_31
+        tot_vol_left = label_12 + label_22 + label_32
 
     print(tot_vol_left, tot_vol_right)
 
     # assign low perfusion volume
-    low_perf_vol_left = label_11
-    low_perf_vol_right = label_12
+    low_perf_vol_right = label_11
+    low_perf_vol_left = label_12
 
     # assign perfusion range (-1000, -770) and (-1000,-920)
-    left_1000_770 = perf_zones_list[0]
-    left_1000_920 = perf_zones_list[1]
-    right_1000_770 = perf_zones_list[2]
-    right_1000_920 = perf_zones_list[3]
+    right_1000_770 = perf_zones_list[0]
+    right_1000_920 = perf_zones_list[1]
+    left_1000_770 = perf_zones_list[2]
+    left_1000_920 = perf_zones_list[3]
 
     print(low_perf_vol_left, low_perf_vol_right)
 
@@ -364,10 +367,10 @@ def examine_threshold(csv_path, thresholds):
     data = np.genfromtxt(csv_path, delimiter=";", dtype=int, names=True)
     print("Data loaded.")
     # define which is left/right
-    left_data = data[data["polmone"] == 1]
-    right_data = data[data["polmone"] == 2]
-    print("LEFT LUNG\tRIGHT LUNG")
-    print(len(left_data), "\t", len(right_data))
+    right_data = data[data["polmone"] == 1]
+    left_data = data[data["polmone"] == 2]
+    print("RIGHT LUNG\tLEFT LUNG")
+    print(len(right_data), "\t", len(left_data))
 
     # select mdc column
     left_data_mdc = left_data["valore_con_mdc"]
@@ -396,7 +399,7 @@ def examine_threshold(csv_path, thresholds):
     # compute ratio on total volume
     left_ratio = len(left_data_low) / (len(left_data_low) + len(left_data_high))
     right_ratio = len(right_data_low) / (len(right_data_low) + len(right_data_high))
-    print(left_ratio, "\t", right_ratio)
+    print(right_ratio, "\t", left_ratio)
 
     # define bins
     start = t1_low
