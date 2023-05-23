@@ -40,7 +40,6 @@ def complete_workflow(image, thresholds=[-1000, -920, -770]):
     )
 
     return pdf_file
-<<<<<<< HEAD
 
 
 # run example
@@ -53,5 +52,3 @@ img = reader.Execute()
 complete_workflow(img)
 
 # estrarre l'ID della serie per scriverlo nel pdf
-=======
->>>>>>> 0b74139cae6efa9df0b6c09a98987cf60e254d76
