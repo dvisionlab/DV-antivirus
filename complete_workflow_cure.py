@@ -12,14 +12,14 @@ from complete_workflow import (
 
 
 def complete_workflow(image, thresholds=[-1000, -920, -770]):
-    # for integration with cure
+    # workflow for integration with cure
 
     # create temporary folder
     temp_path = os.path.join(os.getcwd(), "temp/")
     os.makedirs(temp_path, exist_ok=True)
 
     # run segmentation with lungmask
-    segmentation = do_prediction(image, force_cpu=True, write_image=False)
+    segmentation = do_prediction(image, force_cpu=True, write_image=True)
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette (thresholds)
@@ -40,6 +40,7 @@ def complete_workflow(image, thresholds=[-1000, -920, -770]):
     )
 
     return pdf_file
+<<<<<<< HEAD
 
 
 # run example
@@ -52,3 +53,5 @@ img = reader.Execute()
 complete_workflow(img)
 
 # estrarre l'ID della serie per scriverlo nel pdf
+=======
+>>>>>>> 0b74139cae6efa9df0b6c09a98987cf60e254d76
