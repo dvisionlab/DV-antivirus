@@ -1,4 +1,4 @@
-from .lungmask import mask as lung_mask
+from lungmask import mask as lung_mask
 import SimpleITK as sitk
 import os
 import numpy as np
@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import jinja2
 from weasyprint import HTML
 
-from .utils import dicom2nrrd
+from utils import dicom2nrrd
 
 
 def label_mask(image, mask, thresholds):
@@ -68,6 +68,10 @@ def label_mask(image, mask, thresholds):
 def do_prediction(input_image, force_cpu, dev=False, write_image=True):
     # Run segmentation
     print("Running segmentation...")
+
+    img = sitk.GetArrayFromImage(input_image)
+    print(img.shape)
+
     if dev:
         # only for dev: load mask from file
         print("WARNING: DEV MODE - loading segmentation from file")
@@ -264,6 +268,7 @@ def compute_stats(
     context = {
         "src": src,
         "Titolo_tabella": Titolo_tabella,
+        "Series_id": "ID della serie dicom",
         "n_pix_1": tot_vol_left,
         "n_pix_2": low_perf_vol_left,
         "n_pix_3": tot_vol_right,

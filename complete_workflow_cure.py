@@ -2,7 +2,7 @@ import os
 import SimpleITK as sitk
 from io import BytesIO
 from pydicom import dcmread
-from .complete_workflow import (
+from complete_workflow import (
     do_prediction,
     label_mask,
     maskToCSV,
@@ -45,7 +45,10 @@ def complete_workflow(image, thresholds=[-1000, -920, -770]):
 # run example
 # dicom2nrrd not needed
 reader = sitk.ImageSeriesReader()
-dicom_names = reader.GetGDCMSeriesFileNames("./N2784680/DICOM/MEDIASTINO")
+dicom_names = reader.GetGDCMSeriesFileNames("./N2784744/DICOM/MEDIASTINO")
 reader.SetFileNames(dicom_names)
 img = reader.Execute()
-pdf_file = complete_workflow(img)
+
+complete_workflow(img)
+
+# estrarre l'ID della serie per scriverlo nel pdf
