@@ -2,7 +2,7 @@ import os
 import SimpleITK as sitk
 from io import BytesIO
 from pydicom import dcmread
-from complete_workflow import (
+from .complete_workflow import (
     do_prediction,
     label_mask,
     maskToCSV,

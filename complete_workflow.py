@@ -1,4 +1,4 @@
-from lungmask import mask as lung_mask
+from .lungmask import mask as lung_mask
 import SimpleITK as sitk
 import os
 import numpy as np
@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import jinja2
 from weasyprint import HTML
 
-from utils import dicom2nrrd
+from .utils import dicom2nrrd
 
 # 1 -> left lung on the screen, but right lung in the CT (is the actual right patient's lung)
 # 2 -> right lung on the screen, but left lung in the CT (is the actual left patient's lung)
