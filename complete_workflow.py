@@ -154,7 +154,7 @@ def label_image(mask, image, tresholds, folder_path):
 
 
 def compute_stats(
-    perf_arr, perf_zones_list, ignoreHighThreshold, spacing, dims, outdir
+    perf_arr, perf_zones_list, ignoreHighThreshold, spacing, dims, outdir, seriesID=None
 ):
     # sum by label
     # first digit is the purfusion zone, second digit (units) is the lung
@@ -271,7 +271,7 @@ def compute_stats(
     context = {
         "src": src,
         "Titolo_tabella": Titolo_tabella,
-        "Series_id": "ID della serie dicom",
+        "Series_id": seriesID,
         "n_pix_1": tot_vol_left,
         "n_pix_2": low_perf_vol_left,
         "n_pix_3": tot_vol_right,

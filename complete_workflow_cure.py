@@ -11,7 +11,7 @@ from .complete_workflow import (
 )
 
 
-def complete_workflow(image, thresholds=[-1000, -920, -770]):
+def complete_workflow(image, thresholds=[-1000, -920, -770], seriesID=None):
     # workflow for integration with cure
 
     # create temporary folder
@@ -37,6 +37,7 @@ def complete_workflow(image, thresholds=[-1000, -920, -770]):
         image.GetSpacing(),
         image.GetSize(),
         temp_path,
+        seriesID,
     )
 
     return pdf_file
