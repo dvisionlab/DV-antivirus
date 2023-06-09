@@ -40,15 +40,3 @@ def complete_workflow(image, thresholds=[-1000, -920, -770]):
     )
 
     return pdf_file
-
-
-# run example
-# dicom2nrrd not needed
-reader = sitk.ImageSeriesReader()
-dicom_names = reader.GetGDCMSeriesFileNames("./N2784744/DICOM/MEDIASTINO")
-reader.SetFileNames(dicom_names)
-img = reader.Execute()
-
-complete_workflow(img)
-
-# estrarre l'ID della serie per scriverlo nel pdf
