@@ -307,9 +307,7 @@ def compute_stats(
     with open("html_generated.html", "w") as f:
         f.write(output_text)
 
-    pdf_file = HTML("html_generated.html").write_pdf(outdir + "/" + "summary.pdf")
-
-    return pdf_file
+    HTML("html_generated.html").write_pdf(outdir + "/" + "summary.pdf")
 
 
 def maskToCSV(mask, image, tresholds, folder_path):

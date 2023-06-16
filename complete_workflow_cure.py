@@ -19,7 +19,7 @@ def complete_workflow(image, thresholds=[-1000, -920, -770], seriesID=None):
     os.makedirs(temp_path, exist_ok=True)
 
     # run segmentation with lungmask
-    segmentation = do_prediction(image, force_cpu=True, write_image=True)
+    segmentation = do_prediction(image, force_cpu=True, write_image=False)
     segmentation_arr = sitk.GetArrayFromImage(segmentation)
 
     # extract only values inside the target palette (thresholds)
@@ -30,7 +30,7 @@ def complete_workflow(image, thresholds=[-1000, -920, -770], seriesID=None):
     examine_threshold(temp_path + "hist_output.csv", thresholds)
 
     # compute volumes
-    pdf_file = compute_stats(
+    compute_stats(
         perfusion_mask,
         perf_zones,
         False,
@@ -39,5 +39,3 @@ def complete_workflow(image, thresholds=[-1000, -920, -770], seriesID=None):
         temp_path,
         seriesID,
     )
-
-    return pdf_file
