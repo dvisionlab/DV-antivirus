@@ -443,7 +443,7 @@ def examine_threshold(csv_path, thresholds):
 
     # save hist as png
     plt.savefig("temp/histogram.png")
-    plt.show()
+    # plt.show()
 
 
 if __name__ == "__main__":
